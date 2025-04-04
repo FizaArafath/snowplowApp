@@ -22,47 +22,47 @@ class _BottomNavigationBarState extends State<BottomNavigationBarWidget> {
   void initState() {
     super.initState();
     _loadCompanyId();
-    setupFirebaseMessaging();
+    // setupFirebaseMessaging();
   }
 
-  void setupFirebaseMessaging() async {
-    // Request notification permission
-    NotificationSettings settings = await messaging.requestPermission(
-      alert: true,
-      badge: true,
-      sound: true,
-    );
-
-    if (settings.authorizationStatus == AuthorizationStatus.authorized) {
-      print("✅ User granted permission for notifications.");
-    } else {
-      print("❌ User denied notification permission.");
-      return;
-    }
-
-    // Get FCM Token with error handling
-    try {
-      String? token = await messaging.getToken();
-      if (token != null) {
-        print("✅ FCM Token: $token");
-      } else {
-        print("❌ Failed to get FCM token.");
-      }
-    } catch (e) {
-      print("❌ Error retrieving FCM token: $e");
-    }
-
-    // Listen for foreground messages
-    FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-      print(
-          "📩 Foreground notification received: ${message.notification?.title}");
-    });
-
-    // Handle background notification click
-    FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
-      print("📩 Background notification clicked: ${message.data}");
-    });
-  }
+  // void setupFirebaseMessaging() async {
+  //   // Request notification permission
+  //   NotificationSettings settings = await messaging.requestPermission(
+  //     alert: true,
+  //     badge: true,
+  //     sound: true,
+  //   );
+  //
+  //   if (settings.authorizationStatus == AuthorizationStatus.authorized) {
+  //     print("✅ User granted permission for notifications.");
+  //   } else {
+  //     print("❌ User denied notification permission.");
+  //     return;
+  //   }
+  //
+  //   // Get FCM Token with error handling
+  //   try {
+  //     String? token = await messaging.getToken();
+  //     if (token != null) {
+  //       print("✅ FCM Token: $token");
+  //     } else {
+  //       print("❌ Failed to get FCM token.");
+  //     }
+  //   } catch (e) {
+  //     print("❌ Error retrieving FCM token: $e");
+  //   }
+  //
+  //   // Listen for foreground messages
+  //   FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+  //     print(
+  //         "📩 Foreground notification received: ${message.notification?.title}");
+  //   });
+  //
+  //   // Handle background notification click
+  //   FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
+  //     print("📩 Background notification clicked: ${message.data}");
+  //   });
+  // }
 
   Future<void> _loadCompanyId() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
