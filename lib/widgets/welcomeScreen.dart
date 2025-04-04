@@ -70,7 +70,7 @@ class _welcomeScreenState extends State<welcomeScreen> {
                           Navigator.pushReplacement(
                               context,
                               MaterialPageRoute(
-                                  builder: (context) => loginPage()));
+                                  builder: (context) => LoginScreen()));
                         },
                         icon: Icons.ac_unit,
                         text: "Request Plowing")

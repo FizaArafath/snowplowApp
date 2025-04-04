@@ -124,91 +124,165 @@ class _directRequestFormState extends State<directRequestForm> {
     }
   }
 
+  // Future<void> _submitRequest() async {
+  //   if (!_formkey.currentState!.validate()) {
+  //     return;
+  //   }
+  //
+  //   // Ensure location is fetched
+  //   if ((_locationController.text.isEmpty ||
+  //           _locationController.text == "Fetching location...") &&
+  //       (_selectedAddress == null || _selectedAddress == "other")) {
+  //     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+  //         content: Text("Please select an address or fetch your location")));
+  //     return;
+  //   }
+  //
+  //   // Retrieve stored user ID
+  //   SharedPreferences prefs = await SharedPreferences.getInstance();
+  //   String? userId = prefs.getString('userId');
+  //
+  //   if (userId == null) {
+  //     print("User ID not found!");
+  //     ScaffoldMessenger.of(context)
+  //         .showSnackBar(SnackBar(content: Text("User not authenticated")));
+  //     return;
+  //   }
+  //
+  //   String apiUrl =
+  //       "https://firestore.googleapis.com/v1/projects/snow-plow-d24c0/databases/(default)/documents/bid_requests";
+  //
+  //   try {
+  //     var uuid = Uuid();
+  //     String requestId = uuid.v4();
+  //
+  //     // Upload images and get URLs
+  //     List<Map<String, dynamic>> imageUrls = await _uploadImages();
+  //     String defaultType = "Direct";
+  //
+  //     // Prepare request data
+  //     Map<String, dynamic> requestData = {
+  //       "fields": {
+  //         "requestId": {"stringValue": requestId},
+  //         "userId": {"stringValue": userId},
+  //         "latitude": {"doubleValue": _latitude!}, // ✅ Ensure non-null
+  //         "longitude": {"doubleValue": _longitude!}, // ✅ Ensure non-null
+  //         "area": {"stringValue": _areaControlller.text},
+  //         "address": {"stringValue": _currentAddress},
+  //         "serviceType": {"stringValue": _selectedServiceType!},
+  //         "companyId": {"stringValue": widget.companyId},
+  //         "date": {"stringValue": _selectedDate!.toIso8601String()},
+  //         "time": {"stringValue": _selectedTime!.format(context)},
+  //         "agency": {"stringValue": widget.selectedAgency},
+  //         "agencyRating": {"doubleValue": widget.agencyRating},
+  //         "requestType": {"stringValue": defaultType},
+  //         "images": {
+  //           "arrayValue": {"values": imageUrls}
+  //         }
+  //       }
+  //     };
+  //
+  //     // Send POST request
+  //     final response = await http.post(
+  //       Uri.parse(apiUrl),
+  //       headers: {"Content-Type": "application/json"},
+  //       body: jsonEncode(requestData),
+  //     );
+  //
+  //     if (response.statusCode == 200 || response.statusCode == 201) {
+  //       if (_selectedAddress == null ||
+  //           !_previousAddresses.contains(_locationController.text)) {
+  //         _saveAddress(_locationController.text);
+  //       }
+  //       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+  //           backgroundColor: Colors.teal[100],
+  //           content: Text("Request submitted successfully!",
+  //               style: GoogleFonts.poppins())));
+  //       Navigator.pop(context);
+  //     } else {
+  //       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+  //           content: Text("Failed to submit request: ${response.body}")));
+  //     }
+  //   } catch (e) {
+  //     print("Error submitting request: $e");
+  //     ScaffoldMessenger.of(context)
+  //         .showSnackBar(SnackBar(content: Text("Error submitting request")));
+  //   }
+  // }
+
+
   Future<void> _submitRequest() async {
-    if (!_formkey.currentState!.validate()) {
-      return;
-    }
+    if (!_formkey.currentState!.validate()) return;
 
-    // Ensure location is fetched
-    if ((_locationController.text.isEmpty ||
-            _locationController.text == "Fetching location...") &&
+    if ((_locationController.text.isEmpty || _locationController.text == "Fetching location...") &&
         (_selectedAddress == null || _selectedAddress == "other")) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text("Please select an address or fetch your location")));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Please select an address or fetch your location")),
+      );
       return;
     }
 
-    // Retrieve stored user ID
     SharedPreferences prefs = await SharedPreferences.getInstance();
     String? userId = prefs.getString('userId');
 
     if (userId == null) {
       print("User ID not found!");
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text("User not authenticated")));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("User not authenticated")),
+      );
       return;
     }
 
-    String apiUrl =
-        "https://firestore.googleapis.com/v1/projects/snow-plow-d24c0/databases/(default)/documents/bid_requests";
-
     try {
-      var uuid = Uuid();
-      String requestId = uuid.v4();
+      var uri = Uri.parse("https://snowplow.celiums.com/api/requests/companyrequest");
+      var request = http.MultipartRequest("POST", uri);
 
-      // Upload images and get URLs
-      List<Map<String, dynamic>> imageUrls = await _uploadImages();
-      String defaultType = "Direct";
+      request.fields['user_id'] = userId;
+      request.fields['company_id'] = widget.companyId;
+      request.fields['request_type'] = "Direct";
+      request.fields['latitude'] = _latitude?.toString() ?? "";
+      request.fields['longitude'] = _longitude?.toString() ?? "";
+      request.fields['area'] = _areaControlller.text;
+      request.fields['address'] = _locationController.text;
+      request.fields['service_type'] = _selectedServiceType!;
+      request.fields['date'] = _selectedDate!.toIso8601String();
+      request.fields['time'] = _selectedTime!.format(context);
+      request.fields['agency'] = widget.selectedAgency;
+      request.fields['agency_rating'] = widget.agencyRating.toString();
 
-      // Prepare request data
-      Map<String, dynamic> requestData = {
-        "fields": {
-          "requestId": {"stringValue": requestId},
-          "userId": {"stringValue": userId},
-          "latitude": {"doubleValue": _latitude!}, // ✅ Ensure non-null
-          "longitude": {"doubleValue": _longitude!}, // ✅ Ensure non-null
-          "area": {"stringValue": _areaControlller.text},
-          "address": {"stringValue": _currentAddress},
-          "serviceType": {"stringValue": _selectedServiceType!},
-          "companyId": {"stringValue": widget.companyId},
-          "date": {"stringValue": _selectedDate!.toIso8601String()},
-          "time": {"stringValue": _selectedTime!.format(context)},
-          "agency": {"stringValue": widget.selectedAgency},
-          "agencyRating": {"doubleValue": widget.agencyRating},
-          "requestType": {"stringValue": defaultType},
-          "images": {
-            "arrayValue": {"values": imageUrls}
-          }
-        }
-      };
+      // Attach images
+      for (var image in _images) {
+        request.files.add(await http.MultipartFile.fromPath('images[]', image.path));
+      }
 
-      // Send POST request
-      final response = await http.post(
-        Uri.parse(apiUrl),
-        headers: {"Content-Type": "application/json"},
-        body: jsonEncode(requestData),
-      );
+      var streamedResponse = await request.send();
+      var response = await http.Response.fromStream(streamedResponse);
 
       if (response.statusCode == 200 || response.statusCode == 201) {
-        if (_selectedAddress == null ||
-            !_previousAddresses.contains(_locationController.text)) {
+        if (_selectedAddress == null || !_previousAddresses.contains(_locationController.text)) {
           _saveAddress(_locationController.text);
         }
+
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            backgroundColor: Colors.teal[100],
-            content: Text("Request submitted successfully!",
-                style: GoogleFonts.poppins())));
+          backgroundColor: Colors.teal[100],
+          content: Text("Request submitted successfully!", style: GoogleFonts.poppins()),
+        ));
         Navigator.pop(context);
       } else {
+        print("Failed: ${response.body}");
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content: Text("Failed to submit request: ${response.body}")));
+          content: Text("Failed to submit request: ${response.body}"),
+        ));
       }
     } catch (e) {
       print("Error submitting request: $e");
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text("Error submitting request")));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text("Error submitting request"),
+      ));
     }
   }
+
+
 
 // Upload images to Firebase Storage (Replace this with actual Firebase Storage logic)
   Future<List<Map<String, dynamic>>> _uploadImages() async {
