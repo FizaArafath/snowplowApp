@@ -7,6 +7,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:snowplow/widgets/customer/login_page.dart';
 import 'package:uuid/uuid.dart';
 
+import '../serviceProviders/loginScreen.dart';
+
 
 class userRegForm extends StatefulWidget {
   const userRegForm({super.key});
@@ -26,72 +28,133 @@ class _userRegFormState extends State<userRegForm> {
   bool _isLoading = false;
 
 
-  void _register() async {
-    if (_formkey.currentState!.validate()) {
-      setState(() {
-        _isLoading = true;
-      });
+  // void _register() async {
+  //   if (_formkey.currentState!.validate()) {
+  //     setState(() {
+  //       _isLoading = true;
+  //     });
+  //
+  //     String name = _nameController.text.trim();
+  //     String email = _emailController.text.trim();
+  //     String contact = _contactController.text.trim();
+  //     String password = _passwordController.text.trim();
+  //
+  //     try {
+  //       String userId = Uuid().v4();
+  //
+  //       String url = "https://firestore.googleapis.com/v1/projects/snow-plow-d24c0/databases/(default)/documents/users";
+  //
+  //
+  //       Map<String, dynamic> userData = {
+  //         "fields": {
+  //           "userId": {"stringValue": userId},
+  //           "name": {"stringValue": name},
+  //           "email": {"stringValue": email},
+  //           "contact": {"stringValue": contact},
+  //           "password": {"stringValue": password},
+  //           "createdAt": {"timestampValue": DateTime.now().toUtc().toIso8601String()},
+  //         }
+  //       };
+  //
+  //
+  //       final response = await http.post(
+  //         Uri.parse(url),
+  //         headers: {
+  //           "Content-Type": "application/json",
+  //         },
+  //         body: jsonEncode(userData),
+  //       );
+  //
+  //       if (response.statusCode == 200 || response.statusCode == 201) {
+  //         SharedPreferences prefs = await SharedPreferences.getInstance();
+  //         await prefs.setString("userId", userId);
+  //
+  //
+  //         ScaffoldMessenger.of(context).showSnackBar(
+  //           SnackBar(content: Text("Registration Successful"),
+  //               backgroundColor: Colors.teal[200]),
+  //         );
+  //         Navigator.pushReplacementNamed(context, "/login");
+  //
+  //
+  //         _formkey.currentState!.reset();
+  //       } else {
+  //         throw Exception("Failed to register: ${response.body}");
+  //       }
+  //     } catch (e) {
+  //       ScaffoldMessenger.of(context).showSnackBar(
+  //         SnackBar(content: Text("Error: $e")),
+  //       );
+  //     }
+  //
+  //     setState(() {
+  //       _isLoading = false;
+  //     });
+  //   }
+  // }
 
-      String name = _nameController.text.trim();
-      String email = _emailController.text.trim();
-      String contact = _contactController.text.trim();
-      String password = _passwordController.text.trim();
+void _register()async{
+  if(_formkey.currentState!.validate()){
+    setState(() {
+      _isLoading = true;
+    });
 
-      try {
-        String userId = Uuid().v4();
+    String name = _nameController.text.trim();
+    String email = _emailController.text.trim();
+    String contact = _contactController.text.trim();
+    String password = _passwordController.text.trim();
 
-        String url = "https://firestore.googleapis.com/v1/projects/snow-plow-d24c0/databases/(default)/documents/users";
+   try{
+     String url = "https://snowplow.celiums.com/api/customers/register";
+
+     Map<String,dynamic> userData = {
+       'name':name,
+       'email':email,
+       'contact': contact,
+       'password':password,
+       "api_mode":"test"
+     };
+
+     final response = await http.post(
+     Uri.parse(url),
+         headers:{
+       "Content-type": "application/json",
+         },
+         body:jsonEncode(userData),
+     );
+
+     if(response.statusCode == 200 || response.statusCode == 201){
+       // SharedPreferences prefs = await SharedPreferences.getInstance();
+       // await prefs.setString("userId", email);
+       SharedPreferences prefs = await SharedPreferences.getInstance();
+       // You may need to store something from the response here, like token or user ID
+
+       ScaffoldMessenger.of(context).showSnackBar(
+         SnackBar(content: Text("Registration Successful"),
+             backgroundColor: Colors.teal[200]),
+       );
+       Navigator.pushReplacementNamed(context, "/login");
 
 
-        Map<String, dynamic> userData = {
-          "fields": {
-            "userId": {"stringValue": userId},
-            "name": {"stringValue": name},
-            "email": {"stringValue": email},
-            "contact": {"stringValue": contact},
-            "password": {"stringValue": password},
-            "createdAt": {"timestampValue": DateTime.now().toUtc().toIso8601String()},
-          }
-        };
+       _formkey.currentState!.reset();
+     }else{
+       final errorMsg = jsonDecode(response.body)['message'] ?? "Registration failed";
+       throw Exception(errorMsg);
+     }
+   }
+   catch(e){
+     ScaffoldMessenger.of(context).showSnackBar(
+       SnackBar(content: Text("Error: $e")),
+     );
+   }
 
+   setState(() {
+     _isLoading = false;
+   });
 
-        final response = await http.post(
-          Uri.parse(url),
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: jsonEncode(userData),
-        );
-
-        if (response.statusCode == 200 || response.statusCode == 201) {
-          SharedPreferences prefs = await SharedPreferences.getInstance();
-          await prefs.setString("userId", userId);
-
-
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text("Registration Successful"),
-                backgroundColor: Colors.teal[200]),
-          );
-          Navigator.pushReplacementNamed(context, "/login");
-
-
-          _formkey.currentState!.reset();
-        } else {
-          throw Exception("Failed to register: ${response.body}");
-        }
-      } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Error: $e")),
-        );
-      }
-
-      setState(() {
-        _isLoading = false;
-      });
-    }
   }
 
-
+}
 
 
   @override
@@ -172,9 +235,9 @@ class _userRegFormState extends State<userRegForm> {
                           if(value == null || value.isEmpty){
                             return "Please enter your password";
                           }
-                          if (value.length < 8) {
-                            return "Password must be at least 8 characters";
-                          }
+                          // if (value.length < 8) {
+                          //   return "Password must be at least 8 characters";
+                          // }
                           return null;
                         },
                       ),
@@ -209,7 +272,7 @@ class _userRegFormState extends State<userRegForm> {
                       TextButton(
                           onPressed: (){
                             Navigator.push(context,
-                            MaterialPageRoute(builder: (context) => loginPage()),
+                            MaterialPageRoute(builder: (context) => LoginScreen()),
                             );
                           },
                           child: Text("Already Registered ? Login",
