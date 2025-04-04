@@ -1,0 +1,30 @@
+{
+  "project_info": {
+    "project_number": "359505398738",
+    "firebase_url": "https://snow-plow-d24c0-default-rtdb.firebaseio.com",
+    "project_id": "snow-plow-d24c0",
+    "storage_bucket": "snow-plow-d24c0.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:359505398738:android:381c266990c3b292fd960b",
+        "android_client_info": {
+          "package_name": "com.example.snowplow"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDRXtQIGdH7pzGxGxeIRP-j6UrghWzsqVA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
