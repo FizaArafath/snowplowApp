@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:http/http.dart' as http;
+import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
@@ -102,46 +103,94 @@ String? _selectedService;
   }
 
 
-  // Future<void> _fetchAgencies() async {
-  //   setState(() {
-  //     _isLoadingAgencies = true;
-  //   });
+  //
+  // Future<String?> getCustomerId() async {
+  //   SharedPreferences prefs = await SharedPreferences.getInstance();
+  //   return prefs.getString("userId");
+  // }
+  //
+  // Future<void> createBidRequest({
+  //   required String customerId,
+  //   required String serviceType,
+  //   required String serviceArea,
+  //   required String serviceCity,
+  //   required String serviceStreet,
+  //   required String preferredTime,
+  //   required String preferredDate,
+  //   required String image,
+  //   required String imageExt,
+  //   required String urgencyLevel,
+  //   required String latitude,
+  //   required String longitude,
+  // }) async {
+  //   SharedPreferences prefs = await SharedPreferences.getInstance();
+  //   String? token = prefs.getString('apiKey');
+  //
+  //   if (token == null) {
+  //     if (mounted) {
+  //       ScaffoldMessenger.of(context).showSnackBar(
+  //         SnackBar(content: Text("Please login again")),
+  //       );
+  //     }
+  //     return;
+  //   }
+  //
+  //   String url = "https://snowplow.celiums.com/api/bids/bidrequest";
   //
   //   try {
-  //     String apiUrl =
-  //         "https://firestore.googleapis.com/v1/projects/snow-plow-d24c0/databases/(default)/documents/companies";
+  //     final response = await http.post(
+  //       Uri.parse(url),
+  //       headers: {
+  //         'Content-Type': 'application/json',
+  //         'Authorization': token,
+  //       },
+  //       body: jsonEncode({
+  //         'customer_id': customerId,
+  //         'service_type': serviceType,
+  //         'service_area': serviceArea,
+  //         'service_city': serviceCity,
+  //         'service_street': serviceStreet,
+  //         'preferred_time': preferredTime,
+  //         'preferred_date': preferredDate,
+  //         'image': image,
+  //         'image_ext': imageExt,
+  //         'urgency_level': urgencyLevel,
+  //         'service_latitude': latitude,
+  //         'service_longitude': longitude,
+  //         'api_mode': 'test'
+  //       }),
+  //     );
   //
-  //     final response = await http.get(Uri.parse(apiUrl));
+  //     print('Bid Request Response status: ${response.statusCode}');
+  //     print('Bid Request Response body: ${response.body}');
   //
   //     if (response.statusCode == 200) {
-  //       Map<String, dynamic> data = jsonDecode(response.body);
-  //       List<Map<String, dynamic>> fetchedAgencies = [];
-  //
-  //       if (data.containsKey('documents')) {
-  //         fetchedAgencies = (data['documents'] as List).map((doc) {
-  //           return {
-  //             "name": doc['fields']['companyName']?['stringValue'] ?? 'Unknown',
-  //             // "rating": doc['fields']['rating']?['doubleValue']?.toDouble() ?? 0.0,
-  //             // Add other fields as needed
-  //           };
-  //         }).toList();
+  //       var data = jsonDecode(response.body);
+  //       if (data['status'] == 'success') {
+  //         if (mounted) {
+  //           ScaffoldMessenger.of(context).showSnackBar(
+  //             SnackBar(content: Text("Bid request submitted successfully")),
+  //           );
+  //         }
+  //       } else {
+  //         if (mounted) {
+  //           ScaffoldMessenger.of(context).showSnackBar(
+  //             SnackBar(content: Text(data['message'] ?? "Failed to submit bid request")),
+  //           );
+  //         }
   //       }
-  //
-  //       setState(() {
-  //         agencies = fetchedAgencies;
-  //       });
   //     } else {
-  //       print("Failed to fetch agencies: ${response.statusCode}");
+  //       throw Exception("Failed to submit bid request: ${response.statusCode}");
   //     }
   //   } catch (e) {
-  //     print("Error fetching agencies: $e");
-  //   } finally {
-  //     setState(() {
-  //       _isLoadingAgencies = false;
-  //     });
+  //     if (mounted) {
+  //       ScaffoldMessenger.of(context).showSnackBar(
+  //         SnackBar(content: Text("Error submitting bid request: $e")),
+  //       );
+  //     }
+  //     print('Error details: $e');
   //   }
   // }
-
 
   //AgencyList
   Future<void> _fetchAgencies()async{
@@ -347,119 +396,207 @@ String? _selectedService;
     }
   }
 
+  // void _submitForm() async {
+  //   if (_formkey.currentState!.validate()) {
+  //     if (_selectedDate == null) {
+  //       ScaffoldMessenger.of(context).showSnackBar(
+  //         SnackBar(
+  //             content: Text("Please select a date"),
+  //             backgroundColor: Colors.teal[200]),
+  //       );
+  //       return;
+  //     }
+  //
+  //     if (_selectedTime == null) {
+  //       ScaffoldMessenger.of(context).showSnackBar(
+  //         SnackBar(
+  //             content: Text("Please select a time"),
+  //             backgroundColor: Colors.teal[200]),
+  //       );
+  //       return;
+  //     }
+  //
+  //     // Retrieve stored user ID
+  //     SharedPreferences prefs = await SharedPreferences.getInstance();
+  //     String? userId = prefs.getString('userId'); // Retrieve stored user ID
+  //
+  //     if (userId == null) {
+  //       print("User ID not found!");
+  //       ScaffoldMessenger.of(context)
+  //           .showSnackBar(SnackBar(content: Text("User not authenticated")));
+  //       return;
+  //     }
+  //     List<String> imageUrls = [];
+  //     for (var image in _selectedImages) {
+  //       String imageUrl = await uploadImage(File(image.path)); // ✅ Upload Image
+  //       imageUrls.add(imageUrl);
+  //     }
+  //
+  //     String apiUrl =
+  //         "https://firestore.googleapis.com/v1/projects/snow-plow-d24c0/databases/(default)/documents/bid_requests";
+  //
+  //     Map<String, dynamic> formData = {
+  //       "fields": {
+  //         "userId": {"stringValue": userId}, // Store user ID
+  //         "area": {"stringValue": _areaControlller.text},
+  //         "serviceType": {"stringValue": _selectedServiceType},
+  //         "latitude": {"doubleValue": _latitude!}, // ✅ Ensure non-null
+  //         "longitude": {"doubleValue": _longitude!},
+  //         "address": {"stringValue": _currentAddress},
+  //         "date": {"stringValue": _selectedDate?.toIso8601String() ?? ""},
+  //         "time": {"stringValue": _selectedTime?.format(context) ?? ""},
+  //         "imageUrls": {
+  //           "arrayValue": {
+  //             "values": imageUrls.map((url) => {"stringValue": url}).toList()
+  //           }
+  //         },
+  //         "requestType": {"stringValue": _selectedOptions ?? "Bid"},
+  //         "selectedAgency": {
+  //           "stringValue":
+  //               _selectedOptions == "Direct" ? _selectedAgency ?? "" : ""
+  //         },
+  //         "status": {"stringValue": "pending"},
+  //       }
+  //     };
+  //
+  //     try {
+  //       final response = await http.post(
+  //         Uri.parse(apiUrl),
+  //         headers: {
+  //           "Content-Type": "application/json",
+  //         },
+  //         body: jsonEncode(formData),
+  //       );
+  //       print("Response Status Code: ${response.statusCode}");
+  //       print("Response Body: ${response.body}");
+  //
+  //       if (response.statusCode == 200 || response.statusCode == 201) {
+  //         if (_selectedAddress == null ||
+  //             !_previousAddresses.contains(_locationController.text)) {
+  //           _saveAddress(_locationController.text);
+  //         }
+  //         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+  //             content: Text("Request submitted successfully"),
+  //             backgroundColor: Colors.teal[200]));
+  //         _formkey.currentState!.reset();
+  //         setState(() {
+  //           _selectedDate = null;
+  //           _selectedTime = null;
+  //           _selectedAgency = null;
+  //           _selectedImages = [];
+  //           _locationController.clear();
+  //           _areaControlller.clear();
+  //         });
+  //       } else {
+  //         print("Error: ${response.body}");
+  //         throw Exception("Failed to submit request");
+  //       }
+  //     } catch (e) {
+  //       print("Error: $e");
+  //       ScaffoldMessenger.of(context)
+  //           .showSnackBar(SnackBar(content: Text("Failed to submit request")));
+  //     }
+  //   }
+  // }
+
+
+  //sumbit request
   void _submitForm() async {
+    print("Submit button pressed");
     if (_formkey.currentState!.validate()) {
-      if (_selectedDate == null) {
+      if (_selectedDate == null || _selectedTime == null) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-              content: Text("Please select a date"),
-              backgroundColor: Colors.teal[200]),
+            content: Text("Please select both date and time"),
+            backgroundColor: Colors.teal[200],
+          ),
         );
         return;
       }
+      print("case 2");
 
-      if (_selectedTime == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-              content: Text("Please select a time"),
-              backgroundColor: Colors.teal[200]),
-        );
-        return;
-      }
-
-      // Retrieve stored user ID
       SharedPreferences prefs = await SharedPreferences.getInstance();
-      String? userId = prefs.getString('userId'); // Retrieve stored user ID
+      String? userId = prefs.getString('userId');
 
       if (userId == null) {
-        print("User ID not found!");
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text("User not authenticated")));
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text("User not authenticated")));
         return;
       }
-      List<String> imageUrls = [];
-      for (var image in _selectedImages) {
-        String imageUrl = await uploadImage(File(image.path)); // ✅ Upload Image
-        imageUrls.add(imageUrl);
+
+      // Check if location data is available
+      if (_latitude == null || _longitude == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Please provide a valid location")),
+        );
+        return;
       }
 
-      String apiUrl =
-          "https://firestore.googleapis.com/v1/projects/snow-plow-d24c0/databases/(default)/documents/bid_requests";
-
-      Map<String, dynamic> formData = {
-        "fields": {
-          "userId": {"stringValue": userId}, // Store user ID
-          "area": {"stringValue": _areaControlller.text},
-          "serviceType": {"stringValue": _selectedServiceType},
-          "latitude": {"doubleValue": _latitude!}, // ✅ Ensure non-null
-          "longitude": {"doubleValue": _longitude!},
-          "address": {"stringValue": _currentAddress},
-          "date": {"stringValue": _selectedDate?.toIso8601String() ?? ""},
-          "time": {"stringValue": _selectedTime?.format(context) ?? ""},
-          "imageUrls": {
-            "arrayValue": {
-              "values": imageUrls.map((url) => {"stringValue": url}).toList()
-            }
-          },
-          "requestType": {"stringValue": _selectedOptions ?? "Bid"},
-          "selectedAgency": {
-            "stringValue":
-                _selectedOptions == "Direct" ? _selectedAgency ?? "" : ""
-          },
-          "status": {"stringValue": "pending"},
-        }
-      };
+      List<String> base64Images = [];
+      for (var image in _selectedImages) {
+        List<int> imageBytes = await image.readAsBytes();
+        String base64Image = base64Encode(imageBytes);
+        base64Images.add(base64Image);
+      }
 
       try {
         final response = await http.post(
-          Uri.parse(apiUrl),
+          Uri.parse("https://snowplow.celiums.com/api/requests/companyrequest"),
           headers: {
             "Content-Type": "application/json",
+            "Accept": "application/json",
+            "Authorization": "7161092a3ab46fb924d464e65c84e355",
           },
-          body: jsonEncode(formData),
+          body: jsonEncode({
+            "customer_id": userId,
+            "agency_id": _selectedOptions == "Direct" ? _selectedAgency ?? "" : "",
+            "service_type": _selectedServiceType, // Now correctly set
+            "service_area": _areaControlller.text,
+            "address": _currentAddress,
+            "preferred_time": _selectedTime!.format(context),
+            "preferred_date": DateFormat("dd-MM-yyyy").format(_selectedDate!),
+            "image": base64Images.join(","),
+            "image_ext": "jpg",
+            "urgency_level": "fast",
+            "service_latitude": _latitude!.toString(),
+            "service_longitude": _longitude!.toString(),
+            "api_mode": "test",
+          }),
         );
-        print("Response Status Code: ${response.statusCode}");
-        print("Response Body: ${response.body}");
 
         if (response.statusCode == 200 || response.statusCode == 201) {
-          if (_selectedAddress == null ||
-              !_previousAddresses.contains(_locationController.text)) {
-            _saveAddress(_locationController.text);
-          }
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-              content: Text("Request submitted successfully"),
-              backgroundColor: Colors.teal[200]));
-          _formkey.currentState!.reset();
-          setState(() {
-            _selectedDate = null;
-            _selectedTime = null;
-            _selectedAgency = null;
-            _selectedImages = [];
-            _locationController.clear();
-            _areaControlller.clear();
-          });
+          // Handle success
+
+          print(response.body);
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("request send successfully...!")));
+
         } else {
-          print("Error: ${response.body}");
-          throw Exception("Failed to submit request");
+          print("API Error: ${response.body}");
+          throw Exception("API returned ${response.statusCode}");
         }
       } catch (e) {
-        print("Error: $e");
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text("Failed to submit request")));
+        print("Submission error: $e");
       }
     }
   }
 
-  // Future<void> _saveAddress(String address) async{
-  //   String apiUrl ="https://firestore.googleapis.com/v1/projects/snow-plow-d24c0/databases/(default)/documents/addresses";
-  //   Map<String,dynamic> addressData ={
-  //     "fields": {"address": {"stringValue": address}}
-  //   };
-  //   await http.post(
-  //     Uri.parse(apiUrl),
-  //     headers: {'Content-Type': 'application/json'},
-  //     body: jsonEncode(addressData),
-  //   );
+
+
+
+  Future<void> _geocodeAddress(String address) async {
+    try {
+      List<Location> locations = await locationFromAddress(address);
+      if (locations.isNotEmpty) {
+        setState(() {
+          _latitude = locations.first.latitude;
+          _longitude = locations.first.longitude;
+        });
+      }
+    } catch (e) {
+      print("Geocoding error: $e");
+    }
+  }
+
   Future<void> _saveAddress(String address) async {
     String apiUrl =
         "https://firestore.googleapis.com/v1/projects/snow-plow-d24c0/databases/(default)/documents/addresses";
@@ -591,8 +728,12 @@ String? _selectedService;
                           onChanged: (value) {
                             setState(() {
                               _selectedAddress = value;
-                              _locationController
-                                  .clear(); // Clear "Current Location"
+                              if (value != "other") {
+                                _locationController.text = value!;
+                                _geocodeAddress(value); // Geocode the selected address
+                              } else {
+                                _locationController.clear();
+                              }
                             });
                           },
                           isDense: true,
@@ -762,7 +903,10 @@ String? _selectedService;
                       ],
                       SizedBox(height: 20),
                       ElevatedButton(
-                        onPressed: _submitForm,
+                        onPressed:(){
+                          print("Submit clicked");
+                         _submitForm();
+                        },
                         style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.teal[100],
                             foregroundColor: Colors.white,

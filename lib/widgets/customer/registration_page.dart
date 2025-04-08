@@ -93,68 +93,76 @@ class _userRegFormState extends State<userRegForm> {
   //   }
   // }
 
-void _register()async{
-  if(_formkey.currentState!.validate()){
-    setState(() {
-      _isLoading = true;
-    });
+  void _register()async{
+    if(_formkey.currentState!.validate()){
+      setState(() {
+        _isLoading = true;
+      });
 
-    String name = _nameController.text.trim();
-    String email = _emailController.text.trim();
-    String contact = _contactController.text.trim();
-    String password = _passwordController.text.trim();
+      String name = _nameController.text.trim();
+      String email = _emailController.text.trim();
+      String contact = _contactController.text.trim();
+      String password = _passwordController.text.trim();
 
-   try{
-     String url = "https://snowplow.celiums.com/api/customers/register";
+      try{
+        String url = "https://snowplow.celiums.com/api/customers/register";
 
-     Map<String,dynamic> userData = {
-       'name':name,
-       'email':email,
-       'contact': contact,
-       'password':password,
-       "api_mode":"test"
-     };
+        Map<String,dynamic> userData = {
+          'name':name,
+          'email':email,
+          'contact': contact,
+          'password':password,
+          "api_mode":"test"
+        };
 
-     final response = await http.post(
-     Uri.parse(url),
-         headers:{
-       "Content-type": "application/json",
-         },
-         body:jsonEncode(userData),
-     );
+        final response = await http.post(
+          Uri.parse(url),
+          headers:{
+            "Content-type": "application/json",
+          },
+          body:jsonEncode(userData),
+        );
 
-     if(response.statusCode == 200 || response.statusCode == 201){
-       // SharedPreferences prefs = await SharedPreferences.getInstance();
-       // await prefs.setString("userId", email);
-       SharedPreferences prefs = await SharedPreferences.getInstance();
-       // You may need to store something from the response here, like token or user ID
+        if(response.statusCode == 200 || response.statusCode == 201){
+          var responseData = jsonDecode(response.body);
+          SharedPreferences prefs = await SharedPreferences.getInstance();
 
-       ScaffoldMessenger.of(context).showSnackBar(
-         SnackBar(content: Text("Registration Successful"),
-             backgroundColor: Colors.teal[200]),
-       );
-       Navigator.pushReplacementNamed(context, "/login");
+          // Store the API key for future requests
+          await prefs.setString("apiKey", "7161092a3ab46fb924d464e65c84e35");
 
+          // Store the email as userId if needed
+          await prefs.setString("userId", email);
 
-       _formkey.currentState!.reset();
-     }else{
-       final errorMsg = jsonDecode(response.body)['message'] ?? "Registration failed";
-       throw Exception(errorMsg);
-     }
-   }
-   catch(e){
-     ScaffoldMessenger.of(context).showSnackBar(
-       SnackBar(content: Text("Error: $e")),
-     );
-   }
+          // Store any token if the API provides one
+          if (responseData['token'] != null) {
+            await prefs.setString("token", responseData['token']);
+          }
 
-   setState(() {
-     _isLoading = false;
-   });
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text("Registration Successful"),
+                backgroundColor: Colors.teal[200]),
+          );
+          Navigator.pushReplacementNamed(context, "/login");
+
+          _formkey.currentState!.reset();
+        }else{
+          final errorMsg = jsonDecode(response.body)['message'] ?? "Registration failed";
+          throw Exception(errorMsg);
+        }
+      }
+      catch(e){
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Error: $e")),
+        );
+      }
+
+      setState(() {
+        _isLoading = false;
+      });
+
+    }
 
   }
-
-}
 
 
   @override
@@ -169,9 +177,9 @@ void _register()async{
           margin: EdgeInsets.all(20.0),
           child: SingleChildScrollView(
             child: Padding(
-                padding: EdgeInsets.all(20.0),
+              padding: EdgeInsets.all(20.0),
               child: Form(
-                key: _formkey,
+                  key: _formkey,
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -213,7 +221,7 @@ void _register()async{
                             return "Enter your phone number";
                           }
                           return null;
-                          },
+                        },
                       ),
                       SizedBox(height: 15),
                       TextFormField(
@@ -246,8 +254,8 @@ void _register()async{
                         controller: _confirmPasswordController,
                         obscureText: true,
                         decoration: InputDecoration(
-                          labelText: "confirm password",
-                          border: OutlineInputBorder()
+                            labelText: "confirm password",
+                            border: OutlineInputBorder()
                         ),
                         validator: (value){
                           if (value != _passwordController.text){
@@ -258,26 +266,26 @@ void _register()async{
                       ),
                       SizedBox(height: 15),
                       _isLoading
-                      ?CircularProgressIndicator()
-                      :ElevatedButton(onPressed:_register,
+                          ?CircularProgressIndicator()
+                          :ElevatedButton(onPressed:_register,
                         style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.teal[200],
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                        padding: EdgeInsets.symmetric(horizontal: 50,vertical: 15),
-                      ),
+                          backgroundColor: Colors.teal[200],
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                          padding: EdgeInsets.symmetric(horizontal: 50,vertical: 15),
+                        ),
                         child: Text("Register",style: TextStyle(fontSize: 16)),
                       ),
                       SizedBox(height: 15),
                       TextButton(
-                          onPressed: (){
-                            Navigator.push(context,
+                        onPressed: (){
+                          Navigator.push(context,
                             MaterialPageRoute(builder: (context) => LoginScreen()),
-                            );
-                          },
-                          child: Text("Already Registered ? Login",
-                        style: TextStyle(color: Colors.teal[100]),
-                          ),
+                          );
+                        },
+                        child: Text("Already Registered ? Login",
+                          style: TextStyle(color: Colors.teal[100]),
+                        ),
                       )
                     ],
                   )
