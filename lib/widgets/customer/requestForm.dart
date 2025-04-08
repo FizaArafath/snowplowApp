@@ -9,6 +9,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
 
+import '../../services/agency_services.dart';
+
 class bidRequestForm extends StatefulWidget {
   const bidRequestForm({super.key});
 
@@ -36,53 +38,166 @@ class _bidRequestFormState extends State<bidRequestForm> {
   double? _longitude;
   bool _isFetchingLocation = false;
   bool _isLoadingAgencies = false;
+  bool _isLoadingServices = false;
+  bool _isLoading = false;
 
-  final List<String> serviceTypes = [
-    "Residential Snow Removal",
-    "Commercial Snow Removal",
-    "Driveway Clearing",
-    "Sidewalk Shoveling",
-    "Full Property Cleanup",
+   List<String> _services = [
+    // "Residential Snow Removal",
+    // "Commercial Snow Removal",
+    // "Driveway Clearing",
+    // "Sidewalk Shoveling",
+    // "Full Property Cleanup",
   ];
+
+  List<Agency> _agencies = [];
+
+String? _selectedService;
 
   List<Map<String, dynamic>> agencies = [];
 
-  Future<void> _fetchAgencies() async {
+  //service-type list
+  Future<void> _fetchServices() async {
     setState(() {
-      _isLoadingAgencies = true;
+      _isLoadingServices = true;
     });
 
     try {
-      String apiUrl =
-          "https://firestore.googleapis.com/v1/projects/snow-plow-d24c0/databases/(default)/documents/companies";
-
-      final response = await http.get(Uri.parse(apiUrl));
+      final response = await http.post(
+        Uri.parse("https://snowplow.celiums.com/api/services/list"),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: jsonEncode({
+          "per_page": "10",
+          "page": "0",
+          "api_mode": "test",
+        }),
+      );
 
       if (response.statusCode == 200) {
-        Map<String, dynamic> data = jsonDecode(response.body);
-        List<Map<String, dynamic>> fetchedAgencies = [];
+        final Map<String, dynamic> responseData = jsonDecode(response.body);
 
-        if (data.containsKey('documents')) {
-          fetchedAgencies = (data['documents'] as List).map((doc) {
-            return {
-              "name": doc['fields']['companyName']?['stringValue'] ?? 'Unknown',
-              // "rating": doc['fields']['rating']?['doubleValue']?.toDouble() ?? 0.0,
-              // Add other fields as needed
-            };
-          }).toList();
+        if (responseData['status'] == 1 && responseData['data'] != null) {
+          final List<dynamic> serviceList = responseData['data'];
+
+          setState(() {
+            _services = serviceList.map((service) => service['service_type'].toString()).toList();
+          });
+
+          print("Loaded services: $_services");
+        } else {
+          print("Invalid response format or no data.");
         }
-
-        setState(() {
-          agencies = fetchedAgencies;
-        });
       } else {
-        print("Failed to fetch agencies: ${response.statusCode}");
+        print("Failed to load services. Status: ${response.statusCode}");
       }
     } catch (e) {
-      print("Error fetching agencies: $e");
+      print("Error fetching services: $e");
     } finally {
       setState(() {
-        _isLoadingAgencies = false;
+        _isLoadingServices = false;
+      });
+    }
+  }
+
+
+  // Future<void> _fetchAgencies() async {
+  //   setState(() {
+  //     _isLoadingAgencies = true;
+  //   });
+  //
+  //   try {
+  //     String apiUrl =
+  //         "https://firestore.googleapis.com/v1/projects/snow-plow-d24c0/databases/(default)/documents/companies";
+  //
+  //     final response = await http.get(Uri.parse(apiUrl));
+  //
+  //     if (response.statusCode == 200) {
+  //       Map<String, dynamic> data = jsonDecode(response.body);
+  //       List<Map<String, dynamic>> fetchedAgencies = [];
+  //
+  //       if (data.containsKey('documents')) {
+  //         fetchedAgencies = (data['documents'] as List).map((doc) {
+  //           return {
+  //             "name": doc['fields']['companyName']?['stringValue'] ?? 'Unknown',
+  //             // "rating": doc['fields']['rating']?['doubleValue']?.toDouble() ?? 0.0,
+  //             // Add other fields as needed
+  //           };
+  //         }).toList();
+  //       }
+  //
+  //       setState(() {
+  //         agencies = fetchedAgencies;
+  //       });
+  //     } else {
+  //       print("Failed to fetch agencies: ${response.statusCode}");
+  //     }
+  //   } catch (e) {
+  //     print("Error fetching agencies: $e");
+  //   } finally {
+  //     setState(() {
+  //       _isLoadingAgencies = false;
+  //     });
+  //   }
+  // }
+
+
+  //AgencyList
+  Future<void> _fetchAgencies()async{
+    setState(() {
+      _isLoading = true;
+    });
+
+    try{
+      final response = await http.post(
+        Uri.parse("https://snowplow.celiums.com/api/agencies/list"),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+
+        },
+        body: jsonEncode(
+            {
+              "per_page": "10",
+              "page": "0",
+              "api_mode": "test",
+            }
+        ),
+      );
+      if(response.statusCode == 200){
+        final Map<String,dynamic> responseData = jsonDecode(response.body);
+
+        if(responseData['status'] == 1 &&  responseData['data']!= null){
+          final List<dynamic> agencyList = responseData['data'];
+          print(responseData);
+          print(response.body);
+          setState(() {
+            _agencies = agencyList.map((agency) => Agency(
+              id: agency['agency_id'].toString(),
+              name: agency['agency_name'].toString(),
+              rating: double.tryParse(agency['rating'].toString()) ?? 0.0,
+              email: agency['agency_email'].toString(),
+              uid: agency['uid'].toString(),
+            )).toList();
+          });
+          print("Loaded agencies: ${_agencies.length}");
+        }
+        else{
+          print("Invalid response format or no data.");
+
+        }
+      }
+
+      else{
+        print("Failed to load agencies. Status: ${response.statusCode}");
+      }
+    }catch(e){
+      print("Error fetching agencies: $e");
+    }
+    finally{
+      setState(() {
+        _isLoading = false;
       });
     }
   }
@@ -380,6 +495,7 @@ class _bidRequestFormState extends State<bidRequestForm> {
     _locationController.text = _currentAddress;
     _fetchAddress();
     _fetchAgencies();
+    _fetchServices();
   }
 
   @override
@@ -498,24 +614,23 @@ class _bidRequestFormState extends State<bidRequestForm> {
                       ),
                       SizedBox(height: 20),
                       DropdownButtonFormField<String>(
+                        value: _selectedService,
                         decoration: InputDecoration(
-                          labelText: "Service Type",
                           border: OutlineInputBorder(),
+                          contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 10),
                         ),
-                        value: _selectedServiceType,
-                        items: serviceTypes.map((String value) {
-                          return DropdownMenuItem<String>(
-                            value: value,
-                            child: Text(value),
+                        hint: Text("Choose a service"),
+                        items: _services.map((service) {
+                          return DropdownMenuItem(
+                            value: service,
+                            child: Text(service),
                           );
                         }).toList(),
-                        onChanged: (String? newValue) {
+                        onChanged: (value) {
                           setState(() {
-                            _selectedServiceType = newValue;
+                            _selectedService = value;
                           });
                         },
-                        validator: (value) =>
-                            value == null ? "Select a service type" : null,
                       ),
 
                       // SizedBox(height: 15),
@@ -610,30 +725,36 @@ class _bidRequestFormState extends State<bidRequestForm> {
                       if (_selectedOptions == "Direct") ...[
                         _isLoadingAgencies
                             ? CircularProgressIndicator()
-                            : DropdownButtonFormField(
+                            : _agencies.isEmpty
+                        ? Text("No agencies available")
+                       : DropdownButtonFormField<String>(
                                 decoration: InputDecoration(
                                   labelText: "Select agency",
                                   border: OutlineInputBorder(),
                                 ),
                                 value: _selectedAgency,
-                                items: agencies.map((agency) {
+                                items: _agencies.map<DropdownMenuItem<String>>((Agency agency){
                                   return DropdownMenuItem(
-                                    value: agency["name"],
-                                    child: Text(agency["name"]!),
+                                    value: agency.id,
+                                      child: Text("${agency.name} ⭐ ${agency.rating.toStringAsFixed(1)}"),
                                   );
                                 }).toList(),
-                                onChanged: (value) => setState(
-                                    () => _selectedAgency = value as String?),
-                                validator: (value) =>
-                                    value == null ? "Select an agency" : null,
-                              ),
+                                onChanged: (String? value) {
+                                  setState(() {
+                                    _selectedAgency = value;
+                                  });
+                                },
+                            validator: (value)=> value == null ? "Select an agency" : null,
+                        ),
                         if (_selectedAgency != null) ...[
                           SizedBox(height: 10),
                           Text(
-                            "Selected agency : $_selectedAgency",
-                            style: TextStyle(
-                                fontWeight: FontWeight.bold, fontSize: 16),
+                          "Selected agency: ${_agencies.firstWhere((agency) => agency.id == _selectedAgency).name}",
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
                           ),
+                          )
                           // Text(
                           //     "Rating: ${agencies.firstWhere((agency) => agency["name"] == _selectedAgency)["rating"]} ⭐"
                           // ),

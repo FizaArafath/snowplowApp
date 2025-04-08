@@ -57,20 +57,24 @@ class _welcomeScreenState extends State<welcomeScreen> {
                   children: [
                     _builButton(
                         onPressed: () {
-                          Navigator.pushReplacement(
+                            print("Navigating to LoginScreen...");
+                            Navigator.pushReplacement(
                               context,
                               MaterialPageRoute(
-                                  builder: (context) => LoginScreen()));
+                                  builder: (context) => LoginScreen()),
+                            );
+
                         },
                         icon: Icons.person,
                         text: "Become a Plower"),
                     SizedBox(width: 25),
                     _builButton(
                         onPressed: () {
+                          print("Navigating to LoginScreen...");
                           Navigator.pushReplacement(
                               context,
                               MaterialPageRoute(
-                                  builder: (context) => LoginScreen()));
+                                  builder: (context) => loginPage()));
                         },
                         icon: Icons.ac_unit,
                         text: "Request Plowing")
