@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
@@ -11,27 +10,26 @@ import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
 
 import '../../services/agency_services.dart';
+import 'order_list.dart';
 
-class bidRequestForm extends StatefulWidget {
-  const bidRequestForm({super.key});
+class BidRequestForm extends StatefulWidget {
+  const BidRequestForm({super.key});
 
   @override
-  State<bidRequestForm> createState() => _bidRequestFormState();
+  State<BidRequestForm> createState() => _BidRequestFormState();
 }
 
-class _bidRequestFormState extends State<bidRequestForm> {
+class _BidRequestFormState extends State<BidRequestForm> {
   final _formkey = GlobalKey<FormState>();
-  final TextEditingController _areaControlller = TextEditingController();
+  final TextEditingController _areaController = TextEditingController();
   final TextEditingController _locationController = TextEditingController();
-  // final TextEditingController _locationController = TextEditingController();
-  String? _selectedServiceType;
-
+  String? _selectedService; // This will be used for both service selection and API
+  String? _selectedOptions = "Bid";
+  String? _selectedAgency;
   DateTime? _selectedDate;
   TimeOfDay? _selectedTime;
   List<File> _selectedImages = [];
   final picker = ImagePicker();
-  String? _selectedOptions = "Bid";
-  String? _selectedAgency;
   String? _selectedAddress;
   List<String> _previousAddresses = [];
   String _currentAddress = "Fetching location...";
@@ -41,18 +39,11 @@ class _bidRequestFormState extends State<bidRequestForm> {
   bool _isLoadingAgencies = false;
   bool _isLoadingServices = false;
   bool _isLoading = false;
+  String? selectedUrgency; // 'fast' or 'slow' or null
 
-   List<String> _services = [
-    // "Residential Snow Removal",
-    // "Commercial Snow Removal",
-    // "Driveway Clearing",
-    // "Sidewalk Shoveling",
-    // "Full Property Cleanup",
-  ];
+  List<String> _services = [];
 
   List<Agency> _agencies = [];
-
-String? _selectedService;
 
   List<Map<String, dynamic>> agencies = [];
 
@@ -103,96 +94,7 @@ String? _selectedService;
   }
 
 
-  //
-  // Future<String?> getCustomerId() async {
-  //   SharedPreferences prefs = await SharedPreferences.getInstance();
-  //   return prefs.getString("userId");
-  // }
-  //
-  // Future<void> createBidRequest({
-  //   required String customerId,
-  //   required String serviceType,
-  //   required String serviceArea,
-  //   required String serviceCity,
-  //   required String serviceStreet,
-  //   required String preferredTime,
-  //   required String preferredDate,
-  //   required String image,
-  //   required String imageExt,
-  //   required String urgencyLevel,
-  //   required String latitude,
-  //   required String longitude,
-  // }) async {
-  //   SharedPreferences prefs = await SharedPreferences.getInstance();
-  //   String? token = prefs.getString('apiKey');
-  //
-  //   if (token == null) {
-  //     if (mounted) {
-  //       ScaffoldMessenger.of(context).showSnackBar(
-  //         SnackBar(content: Text("Please login again")),
-  //       );
-  //     }
-  //     return;
-  //   }
-  //
-  //   String url = "https://snowplow.celiums.com/api/bids/bidrequest";
-  //
-  //   try {
-  //     final response = await http.post(
-  //       Uri.parse(url),
-  //       headers: {
-  //         'Content-Type': 'application/json',
-  //         'Authorization': token,
-  //       },
-  //       body: jsonEncode({
-  //         'customer_id': customerId,
-  //         'service_type': serviceType,
-  //         'service_area': serviceArea,
-  //         'service_city': serviceCity,
-  //         'service_street': serviceStreet,
-  //         'preferred_time': preferredTime,
-  //         'preferred_date': preferredDate,
-  //         'image': image,
-  //         'image_ext': imageExt,
-  //         'urgency_level': urgencyLevel,
-  //         'service_latitude': latitude,
-  //         'service_longitude': longitude,
-  //         'api_mode': 'test'
-  //       }),
-  //     );
-  //
-  //     print('Bid Request Response status: ${response.statusCode}');
-  //     print('Bid Request Response body: ${response.body}');
-  //
-  //     if (response.statusCode == 200) {
-  //       var data = jsonDecode(response.body);
-  //       if (data['status'] == 'success') {
-  //         if (mounted) {
-  //           ScaffoldMessenger.of(context).showSnackBar(
-  //             SnackBar(content: Text("Bid request submitted successfully")),
-  //           );
-  //         }
-  //       } else {
-  //         if (mounted) {
-  //           ScaffoldMessenger.of(context).showSnackBar(
-  //             SnackBar(content: Text(data['message'] ?? "Failed to submit bid request")),
-  //           );
-  //         }
-  //       }
-  //     } else {
-  //       throw Exception("Failed to submit bid request: ${response.statusCode}");
-  //     }
-  //   } catch (e) {
-  //     if (mounted) {
-  //       ScaffoldMessenger.of(context).showSnackBar(
-  //         SnackBar(content: Text("Error submitting bid request: $e")),
-  //       );
-  //     }
-  //     print('Error details: $e');
-  //   }
-  // }
 
-  //AgencyList
   Future<void> _fetchAgencies()async{
     setState(() {
       _isLoading = true;
@@ -273,8 +175,8 @@ String? _selectedService;
       if (!mounted) return; // Check again before setting state
 
       setState(() {
-        _latitude = position.latitude; // ✅ Store latitude
-        _longitude = position.longitude; // ✅ Store longitude
+        _latitude = position.latitude; // Store latitude
+        _longitude = position.longitude; // Store longitude
         _currentAddress =
             "${place.street ?? 'Unknown Street'}, ${place.locality ?? 'Unknown City'}, "
             "${place.administrativeArea ?? 'Unknown State'}, ${place.country ?? 'Unknown Country'}";
@@ -377,7 +279,7 @@ String? _selectedService;
       firstDate: DateTime.now(),
       lastDate: DateTime(2101),
     );
-    if (picked != null || picked != _selectedDate) {
+    if (picked != null && picked != _selectedDate) {
       setState(() {
         _selectedDate = picked;
       });
@@ -389,196 +291,13 @@ String? _selectedService;
       context: context,
       initialTime: TimeOfDay.now(),
     );
-    if (picked != null || picked != _selectedTime) {
+    if (picked != null && picked != _selectedTime) {
       setState(() {
         _selectedTime = picked;
       });
     }
   }
 
-  // void _submitForm() async {
-  //   if (_formkey.currentState!.validate()) {
-  //     if (_selectedDate == null) {
-  //       ScaffoldMessenger.of(context).showSnackBar(
-  //         SnackBar(
-  //             content: Text("Please select a date"),
-  //             backgroundColor: Colors.teal[200]),
-  //       );
-  //       return;
-  //     }
-  //
-  //     if (_selectedTime == null) {
-  //       ScaffoldMessenger.of(context).showSnackBar(
-  //         SnackBar(
-  //             content: Text("Please select a time"),
-  //             backgroundColor: Colors.teal[200]),
-  //       );
-  //       return;
-  //     }
-  //
-  //     // Retrieve stored user ID
-  //     SharedPreferences prefs = await SharedPreferences.getInstance();
-  //     String? userId = prefs.getString('userId'); // Retrieve stored user ID
-  //
-  //     if (userId == null) {
-  //       print("User ID not found!");
-  //       ScaffoldMessenger.of(context)
-  //           .showSnackBar(SnackBar(content: Text("User not authenticated")));
-  //       return;
-  //     }
-  //     List<String> imageUrls = [];
-  //     for (var image in _selectedImages) {
-  //       String imageUrl = await uploadImage(File(image.path)); // ✅ Upload Image
-  //       imageUrls.add(imageUrl);
-  //     }
-  //
-  //     String apiUrl =
-  //         "https://firestore.googleapis.com/v1/projects/snow-plow-d24c0/databases/(default)/documents/bid_requests";
-  //
-  //     Map<String, dynamic> formData = {
-  //       "fields": {
-  //         "userId": {"stringValue": userId}, // Store user ID
-  //         "area": {"stringValue": _areaControlller.text},
-  //         "serviceType": {"stringValue": _selectedServiceType},
-  //         "latitude": {"doubleValue": _latitude!}, // ✅ Ensure non-null
-  //         "longitude": {"doubleValue": _longitude!},
-  //         "address": {"stringValue": _currentAddress},
-  //         "date": {"stringValue": _selectedDate?.toIso8601String() ?? ""},
-  //         "time": {"stringValue": _selectedTime?.format(context) ?? ""},
-  //         "imageUrls": {
-  //           "arrayValue": {
-  //             "values": imageUrls.map((url) => {"stringValue": url}).toList()
-  //           }
-  //         },
-  //         "requestType": {"stringValue": _selectedOptions ?? "Bid"},
-  //         "selectedAgency": {
-  //           "stringValue":
-  //               _selectedOptions == "Direct" ? _selectedAgency ?? "" : ""
-  //         },
-  //         "status": {"stringValue": "pending"},
-  //       }
-  //     };
-  //
-  //     try {
-  //       final response = await http.post(
-  //         Uri.parse(apiUrl),
-  //         headers: {
-  //           "Content-Type": "application/json",
-  //         },
-  //         body: jsonEncode(formData),
-  //       );
-  //       print("Response Status Code: ${response.statusCode}");
-  //       print("Response Body: ${response.body}");
-  //
-  //       if (response.statusCode == 200 || response.statusCode == 201) {
-  //         if (_selectedAddress == null ||
-  //             !_previousAddresses.contains(_locationController.text)) {
-  //           _saveAddress(_locationController.text);
-  //         }
-  //         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-  //             content: Text("Request submitted successfully"),
-  //             backgroundColor: Colors.teal[200]));
-  //         _formkey.currentState!.reset();
-  //         setState(() {
-  //           _selectedDate = null;
-  //           _selectedTime = null;
-  //           _selectedAgency = null;
-  //           _selectedImages = [];
-  //           _locationController.clear();
-  //           _areaControlller.clear();
-  //         });
-  //       } else {
-  //         print("Error: ${response.body}");
-  //         throw Exception("Failed to submit request");
-  //       }
-  //     } catch (e) {
-  //       print("Error: $e");
-  //       ScaffoldMessenger.of(context)
-  //           .showSnackBar(SnackBar(content: Text("Failed to submit request")));
-  //     }
-  //   }
-  // }
-
-
-  //sumbit request
-  // void _submitForm() async {
-  //   print("Submit button pressed");
-  //   if (_formkey.currentState!.validate()) {
-  //     if (_selectedDate == null || _selectedTime == null) {
-  //       ScaffoldMessenger.of(context).showSnackBar(
-  //         SnackBar(
-  //           content: Text("Please select both date and time"),
-  //           backgroundColor: Colors.teal[200],
-  //         ),
-  //       );
-  //       return;
-  //     }
-  //     print("case 2");
-  //
-  //     SharedPreferences prefs = await SharedPreferences.getInstance();
-  //     String? userId = prefs.getString('userId');
-  //
-  //     if (userId == null) {
-  //       ScaffoldMessenger.of(context).showSnackBar(
-  //           SnackBar(content: Text("User not authenticated")));
-  //       return;
-  //     }
-  //
-  //     // Check if location data is available
-  //     if (_latitude == null || _longitude == null) {
-  //       ScaffoldMessenger.of(context).showSnackBar(
-  //         SnackBar(content: Text("Please provide a valid location")),
-  //       );
-  //       return;
-  //     }
-  //
-  //     List<String> base64Images = [];
-  //     for (var image in _selectedImages) {
-  //       List<int> imageBytes = await image.readAsBytes();
-  //       String base64Image = base64Encode(imageBytes);
-  //       base64Images.add(base64Image);
-  //     }
-  //
-  //     try {
-  //       final response = await http.post(
-  //         Uri.parse("https://snowplow.celiums.com/api/requests/companyrequest"),
-  //         headers: {
-  //           "Content-Type": "application/json",
-  //           "Accept": "application/json",
-  //           "Authorization": "7161092a3ab46fb924d464e65c84e355",
-  //         },
-  //         body: jsonEncode({
-  //           "customer_id": userId,
-  //           "agency_id": _selectedOptions == "Direct" ? _selectedAgency ?? "" : "",
-  //           "service_type": _selectedServiceType, // Now correctly set
-  //           "service_area": _areaControlller.text,
-  //           "address": _currentAddress,
-  //           "preferred_time": _selectedTime!.format(context),
-  //           "preferred_date": DateFormat("dd-MM-yyyy").format(_selectedDate!),
-  //           "image": base64Images.join(","),
-  //           "image_ext": "jpg",
-  //           "urgency_level": "fast",
-  //           "service_latitude": _latitude!.toString(),
-  //           "service_longitude": _longitude!.toString(),
-  //           "api_mode": "test",
-  //         }),
-  //       );
-  //
-  //       if (response.statusCode == 200 || response.statusCode == 201) {
-  //         // Handle success
-  //
-  //         print(response.body);
-  //         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("request send successfully...!")));
-  //
-  //       } else {
-  //         print("API Error: ${response.body}");
-  //         throw Exception("API returned ${response.statusCode}");
-  //       }
-  //     } catch (e) {
-  //       print("Submission error: $e");
-  //     }
-  //   }
-  // }
 
 
 
@@ -586,18 +305,32 @@ String? _selectedService;
     print("Submit button pressed");
 
     if (_formkey.currentState!.validate()) {
-      if (_selectedDate == null || _selectedTime == null) {
+      print("Form validation passed");
+      
+      // Check for service
+      if (_selectedService == null) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text("Please select both date and time"),
-            backgroundColor: Colors.teal[200],
-          ),
+          SnackBar(content: Text("Please select a service type")),
         );
         return;
       }
 
+      // Check for valid date and time selection
+      if (_selectedDate == null || _selectedTime == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Please select both date and time")),
+        );
+        return;
+      }
+
+      // Format date and time properly
+      final formattedTime = "${_selectedTime!.hour.toString().padLeft(2, '0')}:${_selectedTime!.minute.toString().padLeft(2, '0')}:00";
+      final formattedDate = DateFormat("yyyy-MM-dd").format(_selectedDate!);
+
+      // Get userId from SharedPreferences
       SharedPreferences prefs = await SharedPreferences.getInstance();
       String? userId = prefs.getString('userId');
+      print("User ID: $userId");
 
       if (userId == null) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -606,6 +339,7 @@ String? _selectedService;
         return;
       }
 
+      // Check if latitude and longitude are provided
       if (_latitude == null || _longitude == null) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text("Please provide a valid location")),
@@ -621,10 +355,12 @@ String? _selectedService;
         base64Images.add(base64Image);
       }
 
+
+
       try {
         if (_selectedOptions == "Bid") {
-          /// 🔁 BID REQUEST
-          final bidResponse = await http.post(
+          // BID REQUEST
+          final response = await http.post(
             Uri.parse("https://snowplow.celiums.com/api/bids/bidrequest"),
             headers: {
               "Content-Type": "application/json",
@@ -632,24 +368,61 @@ String? _selectedService;
             },
             body: jsonEncode({
               "agency_id": _selectedAgency ?? "",
-              "comments": _areaControlller.text,
+              "comments": _areaController.text,
+              "service_type": _selectedService,
+              "service_area": _areaController.text,
+              "service_city": _currentAddress,
+              "service_latitude": _latitude?.toString() ?? "",
+              "service_longitude": _longitude?.toString() ?? "",
+              "urgency_level": selectedUrgency,
+              "image": base64Images.join(","),
+              "preferred_time": formattedTime,
+              "service_street": _areaController.text,
+              "preferred_date": formattedDate,
               "customer_id": userId,
               "api_mode": "test",
             }),
           );
+          print("Response Body (Raw): ${response.body}");
 
-          if (bidResponse.statusCode == 200 || bidResponse.statusCode == 201) {
-            print("✅ Bid request sent: ${bidResponse.body}");
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text("Bid request sent successfully!")),
-            );
+          if (response.statusCode == 200 || response.statusCode == 201) {
+            try {
+              var jsonResponse = jsonDecode(response.body);
+              print("Response Body (JSON): $jsonResponse");
+
+              String message = jsonResponse['message'] ?? "Bid request sent successfully!";
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text(message)),
+              );
+            } catch (e) {
+
+              // Catch error while decoding JSON
+              print("Error parsing JSON: $e");
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text("Bid request sent successfully!")),
+              );
+            }
+            Navigator.push(context, MaterialPageRoute(builder: (context)=>OrderList()));
           } else {
-            print("❌ Bid API Error: ${bidResponse.body}");
-            throw Exception("Bid API returned ${bidResponse.statusCode}");
-          }
+            print("Bid API Error Status Code: ${response.statusCode}");
+            print("Bid API Error Body: ${response.body}");
 
+            try {
+              var errorResponse = jsonDecode(response.body);
+              String errorMessage = errorResponse['message'] ?? "Bid request failed with status ${response.statusCode}";
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text(errorMessage)),
+              );
+            } catch (e) {
+              print("Error parsing error response: $e");
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text("Bid request failed: ${response.statusCode} - ${response.body}")),
+              );
+            }
+            throw Exception("Bid API returned ${response.statusCode}");
+          }
         } else {
-          /// 🧾 DIRECT REQUEST
+          // DIRECT REQUEST
           final response = await http.post(
             Uri.parse("https://snowplow.celiums.com/api/requests/companyrequest"),
             headers: {
@@ -660,14 +433,14 @@ String? _selectedService;
             body: jsonEncode({
               "customer_id": userId,
               "agency_id": _selectedAgency ?? "",
-              "service_type": _selectedServiceType,
-              "service_area": _areaControlller.text,
+              "service_type": _selectedService,
+              "service_area": _areaController.text,
               "address": _currentAddress,
-              "preferred_time": _selectedTime!.format(context),
-              "preferred_date": DateFormat("dd-MM-yyyy").format(_selectedDate!),
+              "preferred_time": formattedTime,
+              "preferred_date": formattedDate,
               "image": base64Images.join(","),
               "image_ext": "jpg",
-              "urgency_level": "fast",
+              "urgency_level": selectedUrgency,
               "service_latitude": _latitude!.toString(),
               "service_longitude": _longitude!.toString(),
               "api_mode": "test",
@@ -675,12 +448,46 @@ String? _selectedService;
           );
 
           if (response.statusCode == 200 || response.statusCode == 201) {
-            print("✅ Direct request sent: ${response.body}");
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text("Request sent successfully!")),
-            );
+            print("Response Status Code: ${response.statusCode}");
+            print("Response Headers: ${response.headers}");
+
+            // Check for content type and response body
+            var contentType = response.headers['content-type'];
+            print("Content-Type: $contentType");
+
+            // Try to parse the response body as JSON
+            try {
+              var jsonResponse = jsonDecode(response.body);
+              print("Response Body (JSON): $jsonResponse");
+
+              // Show success message with any available message from the response
+              String message = jsonResponse['message'] ?? "Request sent successfully!";
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text(message)),
+              );
+            } catch (e) {
+              // If not JSON, print raw body
+              print("Response Body (Raw): ${response.body}");
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text("Request sent successfully!")),
+              );
+            }
           } else {
-            print("❌ API Error: ${response.body}");
+            print("API Error Status Code: ${response.statusCode}");
+            print("API Error Body: ${response.body}");
+
+            // Try to parse error response
+            try {
+              var errorResponse = jsonDecode(response.body);
+              String errorMessage = errorResponse['message'] ?? "Request failed with status ${response.statusCode}";
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text(errorMessage)),
+              );
+            } catch (e) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text("Request failed: ${response.statusCode} - ${response.body}")),
+              );
+            }
             throw Exception("API returned ${response.statusCode}");
           }
         }
@@ -692,6 +499,7 @@ String? _selectedService;
       }
     }
   }
+
 
 
 
@@ -859,7 +667,7 @@ String? _selectedService;
 
                       TextFormField(
                         style: GoogleFonts.poppins(),
-                        controller: _areaControlller,
+                        controller: _areaController,
                         keyboardType: TextInputType.number,
                         decoration: InputDecoration(
                             labelText: "Approximate Area (sq ft)",
@@ -871,6 +679,7 @@ String? _selectedService;
                       DropdownButtonFormField<String>(
                         value: _selectedService,
                         decoration: InputDecoration(
+                          labelText: "Choose a service",
                           border: OutlineInputBorder(),
                           contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 10),
                         ),
@@ -886,28 +695,9 @@ String? _selectedService;
                             _selectedService = value;
                           });
                         },
+                        validator: (value) => value == null ? "Please select a service" : null,
                       ),
 
-                      // SizedBox(height: 15),
-                      //     TextFormField(
-                      //         style: GoogleFonts.poppins(),
-                      //       controller: _locationController,
-                      //       decoration: InputDecoration(labelText: "or enter new address",border: OutlineInputBorder()),
-                      //       enabled: _selectedAddress ==null,
-                      //       onChanged: (value){
-                      //         if(value.isNotEmpty){
-                      //           setState(() {
-                      //             _selectedAddress=null;
-                      //           });
-                      //         }
-                      //       },
-                      //       validator: (value){
-                      //         if((value == null || value.isEmpty) && _selectedAddress == null){
-                      //           return "enter or select an address";
-                      //         }
-                      //         return null;
-                      //       }
-                      //     ),
                       SizedBox(height: 15),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -952,6 +742,31 @@ String? _selectedService;
                         icon: Icon(Icons.add_a_photo),
                         onPressed: _pickImages,
                       ),
+                      SizedBox(height: 15,),
+                      Column(
+                        children: [
+                          Text("Urgency Level"),
+
+                          CheckboxListTile(
+                            title: Text('Fast'),
+                            value: selectedUrgency == 'fast',
+                            onChanged: (value) {
+                              setState(() {
+                                selectedUrgency = value! ? 'fast' : null;
+                              });
+                            },
+                          ),
+                          CheckboxListTile(
+                            title: Text('Slow'),
+                            value: selectedUrgency == 'slow',
+                            onChanged: (value) {
+                              setState(() {
+                                selectedUrgency = value! ? 'slow' : null;
+                              });
+                            },
+                          ),
+                        ],
+                      ),
                       SizedBox(height: 15),
                       Row(
                         children: [
@@ -981,26 +796,26 @@ String? _selectedService;
                         _isLoadingAgencies
                             ? CircularProgressIndicator()
                             : _agencies.isEmpty
-                        ? Text("No agencies available")
-                       : DropdownButtonFormField<String>(
-                                decoration: InputDecoration(
-                                  labelText: "Select agency",
-                                  border: OutlineInputBorder(),
+                                ? Text("No agencies available")
+                                : DropdownButtonFormField<String>(
+                                    decoration: InputDecoration(
+                                      labelText: "Select agency",
+                                      border: OutlineInputBorder(),
+                                    ),
+                                    value: _selectedAgency,
+                                    items: _agencies.map<DropdownMenuItem<String>>((Agency agency){
+                                      return DropdownMenuItem(
+                                        value: agency.id,
+                                          child: Text("${agency.name} ⭐ ${agency.rating.toStringAsFixed(1)}"),
+                                      );
+                                    }).toList(),
+                                    onChanged: (String? value) {
+                                      setState(() {
+                                        _selectedAgency = value;
+                                      });
+                                    },
+                                  validator: (value)=> value == null ? "Select an agency" : null,
                                 ),
-                                value: _selectedAgency,
-                                items: _agencies.map<DropdownMenuItem<String>>((Agency agency){
-                                  return DropdownMenuItem(
-                                    value: agency.id,
-                                      child: Text("${agency.name} ⭐ ${agency.rating.toStringAsFixed(1)}"),
-                                  );
-                                }).toList(),
-                                onChanged: (String? value) {
-                                  setState(() {
-                                    _selectedAgency = value;
-                                  });
-                                },
-                            validator: (value)=> value == null ? "Select an agency" : null,
-                        ),
                         if (_selectedAgency != null) ...[
                           SizedBox(height: 10),
                           Text(

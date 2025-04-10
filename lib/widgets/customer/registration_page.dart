@@ -22,6 +22,7 @@ class _userRegFormState extends State<userRegForm> {
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _contactController = TextEditingController();
+  final TextEditingController _countryController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _confirmPasswordController = TextEditingController();
   bool _isObscure = true;
@@ -101,8 +102,9 @@ class _userRegFormState extends State<userRegForm> {
 
       String name = _nameController.text.trim();
       String email = _emailController.text.trim();
-      String contact = _contactController.text.trim();
+      String phone = _contactController.text.trim();
       String password = _passwordController.text.trim();
+      String country = _countryController.text.trim();
 
       try{
         String url = "https://snowplow.celiums.com/api/customers/register";
@@ -110,7 +112,8 @@ class _userRegFormState extends State<userRegForm> {
         Map<String,dynamic> userData = {
           'name':name,
           'email':email,
-          'contact': contact,
+          'phone': phone,
+          'country':country,
           'password':password,
           "api_mode":"test"
         };
@@ -122,11 +125,14 @@ class _userRegFormState extends State<userRegForm> {
           },
           body:jsonEncode(userData),
         );
+print("response:${response.statusCode}");
 
         if(response.statusCode == 200 || response.statusCode == 201){
+          print(response.statusCode);
+          print(response.body);
           var responseData = jsonDecode(response.body);
           SharedPreferences prefs = await SharedPreferences.getInstance();
-
+print("responseData :$responseData");
           // Store the API key for future requests
           await prefs.setString("apiKey", "7161092a3ab46fb924d464e65c84e35");
 
@@ -134,9 +140,9 @@ class _userRegFormState extends State<userRegForm> {
           await prefs.setString("userId", email);
 
           // Store any token if the API provides one
-          if (responseData['token'] != null) {
-            await prefs.setString("token", responseData['token']);
-          }
+          // if (responseData['token'] != null) {
+          //   await prefs.setString("token", responseData['token']);
+          // }
 
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text("Registration Successful"),
@@ -224,6 +230,18 @@ class _userRegFormState extends State<userRegForm> {
                         },
                       ),
                       SizedBox(height: 15),
+                      TextFormField(
+                        controller: _countryController,
+                        decoration: InputDecoration(labelText: "Country",border: OutlineInputBorder()),
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return "Enter your country";
+                          }
+                        }
+                      ),
+                      SizedBox(
+                        height: 15,
+                      ),
                       TextFormField(
                         controller: _passwordController,
                         obscureText: _isObscure,

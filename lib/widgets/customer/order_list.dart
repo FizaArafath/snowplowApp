@@ -1,116 +1,317 @@
-import 'dart:convert';
+// import 'dart:convert';
+//
+// import 'package:flutter/material.dart';
+// import 'package:google_fonts/google_fonts.dart';
+// import 'package:http/http.dart' as http;
+// import 'package:shared_preferences/shared_preferences.dart';
+//
+//
+// class orderList extends StatefulWidget {
+//   const orderList({super.key});
+//
+//   @override
+//   State<orderList> createState() => _orderListState();
+// }
+//
+// class _orderListState extends State<orderList> {
+//   final String apiUrl = "https://firestore.googleapis.com/v1/projects/snow-plow-d24c0/databases/(default)/documents/bid_requests";
+//
+//   List<Map<String,dynamic>> requests =[];
+//
+//   @override
+//   void initState() {
+//     super.initState();
+//     fetchRequest();
+//   }
+//
+//
+//
+//   // Future<void> fetchRequest() async {
+//   //   try {
+//   //     SharedPreferences prefs = await SharedPreferences.getInstance();
+//   //     String? userId = prefs.getString("userId");  // Retrieve logged-in user ID
+//   //
+//   //     if (userId == null) {
+//   //       print("⚠️ User ID not found!");
+//   //       return;
+//   //     }
+//   //
+//   //     final response = await http.get(
+//   //       Uri.parse(apiUrl),
+//   //       headers: {"Content-Type": "application/json"},
+//   //     );
+//   //
+//   //     print("Response Code: ${response.statusCode}");
+//   //
+//   //     if (response.statusCode == 200) {
+//   //       final data = jsonDecode(response.body);
+//   //       List<Map<String, dynamic>> loadedRequests = [];
+//   //
+//   //       if (data["documents"] != null) {
+//   //         for (var doc in data["documents"]) {
+//   //           var fields = doc["fields"];
+//   //
+//   //           // Extract request owner's ID from Firestore
+//   //           String? requestOwnerId = fields.containsKey("userId") ? fields["userId"]["stringValue"] : null;
+//   //
+//   //           // 🔥 Only process requests that belong to the logged-in user
+//   //           if (requestOwnerId != null && requestOwnerId == userId) {
+//   //             String? rawStatus = fields.containsKey("status") ? fields["status"]["stringValue"] : null;
+//   //             String status = rawStatus?.trim().toLowerCase() ?? "pending";
+//   //
+//   //             loadedRequests.add({
+//   //               "area": fields.containsKey("area") ? fields["area"]["stringValue"] ?? "Unknown" : "Unknown",
+//   //               "date": fields.containsKey("date") ? fields["date"]["stringValue"] ?? "N/A" : "N/A",
+//   //               "time": fields.containsKey("time") ? fields["time"]["stringValue"] ?? "N/A" : "N/A",
+//   //               "requestType": fields.containsKey("serviceType") ? fields["serviceType"]["stringValue"] ?? "Unknown" : "Unknown",
+//   //               "selectedAgency": fields.containsKey("agency") ? fields["agency"]["stringValue"] ?? "N/A" : "N/A",
+//   //               "status": status,
+//   //             });
+//   //
+//   //             print("✅ Added Request for User ID: $userId -> ${loadedRequests.last}");
+//   //           }
+//   //         }
+//   //       }
+//   //
+//   //       setState(() {
+//   //         requests = loadedRequests;
+//   //       });
+//   //
+//   //       print("🔥 Total Requests for Logged-In User: ${requests.length}");
+//   //     } else {
+//   //       throw Exception("Failed to load requests. Status Code: ${response.statusCode}");
+//   //     }
+//   //   } catch (e) {
+//   //     print("❌ Error fetching requests: $e");
+//   //   }
+//   // }
+//
+//   final String aiUrl = "https://snowplow.celiums.com/api/requests/getrequests"; // your PHP endpoint
+//
+//   Future<void> fetchRequest() async {
+//     try {
+//       SharedPreferences prefs = await SharedPreferences.getInstance();
+//       String? userId = prefs.getString("userId");
+//
+//       if (userId == null) {
+//         print("⚠️ User ID not found!");
+//         return;
+//       }
+//
+//       final response = await http.post(
+//         Uri.parse(apiUrl),
+//         headers: {"Content-Type": "application/json"},
+//         body: jsonEncode({
+//           "customer_id": userId,
+//           "api_mode": "test"
+//         }),
+//       );
+//
+//       print("Response Code: ${response.statusCode}");
+//
+//       if (response.statusCode == 200) {
+//         final data = jsonDecode(response.body);
+//
+//         if (data["status"] == 1 && data["data"] != null) {
+//           List<Map<String, dynamic>> loadedRequests = [];
+//
+//           for (var req in data["data"]) {
+//             String status = (req["status"] ?? "pending").toString().toLowerCase().trim();
+//
+//             loadedRequests.add({
+//               "area": req["service_area"] ?? "Unknown",
+//               "date": req["preferred_date"] ?? "N/A",
+//               "time": req["preferred_time"] ?? "N/A",
+//               "requestType": req["service_type"] ?? "Unknown",
+//               "selectedAgency": req["agency_id"] ?? "N/A",
+//               "status": status,
+//             });
+//           }
+//
+//           setState(() {
+//             requests = loadedRequests;
+//           });
+//
+//           print("✅ Loaded ${requests.length} requests");
+//         } else {
+//           print("⚠️ No request data found");
+//         }
+//       } else {
+//         throw Exception("Failed to load requests. Status Code: ${response.statusCode}");
+//       }
+//     } catch (e) {
+//       print("❌ Error fetching requests: $e");
+//     }
+//   }
+//
+//
+//
+//   @override
+//   Widget build(BuildContext context) {
+//     return DefaultTabController(
+//       length: 3,
+//       child: Scaffold(
+//         appBar: AppBar(
+//           title: Text("Snow Plow Requests",
+//           style: GoogleFonts.poppins(
+//             color: Colors.white,
+//             fontWeight: FontWeight.bold,
+//             fontSize: 20
+//           ),
+//           ),
+//           backgroundColor: Colors.teal[100],
+//           actions: [
+//             IconButton(
+//               icon: Icon(Icons.add),
+//               onPressed: () => Navigator.pushNamed(context, "/request"),
+//             ),
+//           ],
+//           bottom: TabBar(
+//             unselectedLabelStyle: GoogleFonts.poppins(color: Colors.white,fontWeight: FontWeight.bold),
+//               labelStyle: GoogleFonts.poppins(color: Colors.blue,fontWeight: FontWeight.bold),
+//               tabs: [
+//             Tab(text: "Active"),
+//             Tab(text: "Pending"),
+//             Tab(text: "Completed"),
+//           ]),
+//         ),
+//         body: TabBarView(children: [
+//           requestList("Active"),
+//           requestList("Pending"),
+//           requestList("Completed"),
+//
+//         ]),
+//       ),
+//     );
+//   }
+//   Widget requestList(String status) {
+//     List<Map<String, dynamic>> filteredRequest;
+//
+//     if (status == "Active") {
+//       print("🔥 Before Filtering - All Requests: ${requests.map((r) => r["status"])}");
+//
+//       filteredRequest = requests.where((req) {
+//         String requestStatus = req["status"].toString().trim().toLowerCase();
+//         print("🔍 Checking Request: Status = $requestStatus");
+//
+//         return requestStatus == "accepted"; // Ensure proper case handling
+//       }).toList();
+//
+//       print("✅ Filtered Requests for 'Active': ${filteredRequest.length}");
+//
+//     } else {
+//       // Normal filtering for Pending/Completed
+//       filteredRequest = requests.where((req) =>
+//       req["status"].toString().trim().toLowerCase() == status.toLowerCase()
+//       ).toList();
+//     }
+//
+//     print("✅ Final Requests for '$status': ${filteredRequest.length}");
+//
+//
+//
+//
+//     return filteredRequest.isEmpty
+//         ? Center(child: CircularProgressIndicator())
+//         : filteredRequest.isEmpty
+//         ? Center(
+//       child: Text(
+//         "No requests found!",
+//         style: TextStyle(fontSize: 16),
+//       ),
+//     )
+//         : ListView.builder(
+//       itemCount: filteredRequest.length,
+//       itemBuilder: (context, index) {
+//         final request = filteredRequest[index];
+//         return Card(
+//           margin: EdgeInsets.all(10),
+//           shape: RoundedRectangleBorder(
+//             borderRadius: BorderRadius.circular(15),
+//           ),
+//           elevation: 5,
+//           child: ListTile(
+//             title: Text("Area : ${request["area"]} sq ft"),
+//             subtitle: Column(
+//               crossAxisAlignment: CrossAxisAlignment.start,
+//               children: [
+//                 Text("Date: ${request["date"]}"),
+//                 Text("Time: ${request["time"]}"),
+//                 Text("Type: ${request["requestType"]}"),
+//                 if (request["requestType"] == "Direct")
+//                   Text("Agency: ${request["selectedAgency"]}"),
+//                 Text("Status: ${request["status"]}", style: TextStyle(fontWeight: FontWeight.bold)),
+//               ],
+//             ),
+//             trailing: Icon(Icons.snowing),
+//           ),
+//         );
+//       },
+//     );
+//   }
+//
+// }
 
+
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
-
-class orderList extends StatefulWidget {
-  const orderList({super.key});
+class OrderList extends StatefulWidget {
+  const OrderList({super.key});
 
   @override
-  State<orderList> createState() => _orderListState();
+  State<OrderList> createState() => _OrderListState();
 }
 
-class _orderListState extends State<orderList> {
-  final String apiUrl = "https://firestore.googleapis.com/v1/projects/snow-plow-d24c0/databases/(default)/documents/bid_requests";
+class _OrderListState extends State<OrderList> {
+  final String requestApiUrl = "https://snowplow.celiums.com/api/requests/list";
+  final String bidListApiUrl = "https://snowplow.celiums.com/api/bids/list";
+  final String bidDeleteApiUrl = "https://snowplow.celiums.com/api/bids/delete";
 
-  List<Map<String,dynamic>> requests =[];
+  List<Map<String, dynamic>> requests = [];
+  List<Map<String, dynamic>> bids = [];
+  bool isRequestLoading = true;
+  bool isBidLoading = true;
 
   @override
   void initState() {
     super.initState();
-    fetchRequest();
+    fetchRequests();
+    fetchBids();
   }
 
-
-
-  // Future<void> fetchRequest() async {
-  //   try {
-  //     SharedPreferences prefs = await SharedPreferences.getInstance();
-  //     String? userId = prefs.getString("userId");  // Retrieve logged-in user ID
-  //
-  //     if (userId == null) {
-  //       print("⚠️ User ID not found!");
-  //       return;
-  //     }
-  //
-  //     final response = await http.get(
-  //       Uri.parse(apiUrl),
-  //       headers: {"Content-Type": "application/json"},
-  //     );
-  //
-  //     print("Response Code: ${response.statusCode}");
-  //
-  //     if (response.statusCode == 200) {
-  //       final data = jsonDecode(response.body);
-  //       List<Map<String, dynamic>> loadedRequests = [];
-  //
-  //       if (data["documents"] != null) {
-  //         for (var doc in data["documents"]) {
-  //           var fields = doc["fields"];
-  //
-  //           // Extract request owner's ID from Firestore
-  //           String? requestOwnerId = fields.containsKey("userId") ? fields["userId"]["stringValue"] : null;
-  //
-  //           // 🔥 Only process requests that belong to the logged-in user
-  //           if (requestOwnerId != null && requestOwnerId == userId) {
-  //             String? rawStatus = fields.containsKey("status") ? fields["status"]["stringValue"] : null;
-  //             String status = rawStatus?.trim().toLowerCase() ?? "pending";
-  //
-  //             loadedRequests.add({
-  //               "area": fields.containsKey("area") ? fields["area"]["stringValue"] ?? "Unknown" : "Unknown",
-  //               "date": fields.containsKey("date") ? fields["date"]["stringValue"] ?? "N/A" : "N/A",
-  //               "time": fields.containsKey("time") ? fields["time"]["stringValue"] ?? "N/A" : "N/A",
-  //               "requestType": fields.containsKey("serviceType") ? fields["serviceType"]["stringValue"] ?? "Unknown" : "Unknown",
-  //               "selectedAgency": fields.containsKey("agency") ? fields["agency"]["stringValue"] ?? "N/A" : "N/A",
-  //               "status": status,
-  //             });
-  //
-  //             print("✅ Added Request for User ID: $userId -> ${loadedRequests.last}");
-  //           }
-  //         }
-  //       }
-  //
-  //       setState(() {
-  //         requests = loadedRequests;
-  //       });
-  //
-  //       print("🔥 Total Requests for Logged-In User: ${requests.length}");
-  //     } else {
-  //       throw Exception("Failed to load requests. Status Code: ${response.statusCode}");
-  //     }
-  //   } catch (e) {
-  //     print("❌ Error fetching requests: $e");
-  //   }
-  // }
-
-  final String aiUrl = "https://snowplow.celiums.com/api/requests/getrequests"; // your PHP endpoint
-
-  Future<void> fetchRequest() async {
+  Future<void> fetchRequests() async {
     try {
       SharedPreferences prefs = await SharedPreferences.getInstance();
-      String? userId = prefs.getString("userId");
+      String? customerId = prefs.getString("userId");
+      String? agencyId;
 
-      if (userId == null) {
+      if (customerId == null) {
         print("⚠️ User ID not found!");
         return;
       }
 
       final response = await http.post(
-        Uri.parse(apiUrl),
-        headers: {"Content-Type": "application/json"},
+        Uri.parse(requestApiUrl),
+        headers: {
+          "Content-Type": "application/json"
+        },
         body: jsonEncode({
-          "customer_id": userId,
+          "customer_id": customerId,
+          "agency_id": agencyId,
+          "per_page": "10",
+          "page": "0",
           "api_mode": "test"
         }),
       );
 
-      print("Response Code: ${response.statusCode}");
-
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
+        print("heii:${response.statusCode}");
+        print(response.body);
 
         if (data["status"] == 1 && data["data"] != null) {
           List<Map<String, dynamic>> loadedRequests = [];
@@ -124,106 +325,213 @@ class _orderListState extends State<orderList> {
               "time": req["preferred_time"] ?? "N/A",
               "requestType": req["service_type"] ?? "Unknown",
               "selectedAgency": req["agency_id"] ?? "N/A",
-              "status": status,
+              "status": (req["status"] ?? "pending").toString().toLowerCase().trim(),
             });
+
           }
 
           setState(() {
+            isRequestLoading = false;
             requests = loadedRequests;
           });
-
-          print("✅ Loaded ${requests.length} requests");
-        } else {
-          print("⚠️ No request data found");
         }
+        // else {
+        //   setState(() {
+        //     isRequestLoading = false;
+        //     requests = [];
+        //   });
+        // }
       } else {
         throw Exception("Failed to load requests. Status Code: ${response.statusCode}");
       }
     } catch (e) {
       print("❌ Error fetching requests: $e");
+      setState(() {
+        isRequestLoading = false;
+      });
     }
   }
 
+  Future<void> fetchBids() async {
+    try {
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      String? userId = prefs.getString("userId");
 
+      if (userId == null) {
+        print("⚠️ User ID not found!");
+        return;
+      }
+
+      final response = await http.post(
+        Uri.parse(bidListApiUrl),
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({
+          "customer_id": userId,
+          "per_page": "10",
+          "page": "0",
+          "api_mode": "test"
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        print("hello:${response.statusCode}");
+        print(response.body);
+
+        if (data["status"] == 1 && data["data"] != null) {
+          setState(() {
+            isBidLoading = false;
+            bids = List<Map<String, dynamic>>.from(data["data"]);
+          });
+          print("bids:$bids");
+        } else {
+          setState(() {
+            isBidLoading = false;
+            bids = [];
+          });
+        }
+      } else {
+        throw Exception("Failed to load bids. Status Code: ${response.statusCode}");
+      }
+    } catch (e) {
+      print("❌ Error fetching bids: $e");
+      setState(() {
+        isBidLoading = false;
+      });
+    }
+  }
+
+  Future<void> deleteBid(String requestId) async {
+    try {
+      final response = await http.post(
+        Uri.parse(bidDeleteApiUrl),
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({
+          "request_id": requestId,
+          "api_mode": "test"}),
+      );
+print(requestId);
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data["status"] == 1) {
+          ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text("Bid deleted successfully.")));
+          fetchBids();
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text("Failed to delete bid.")));
+        }
+      }
+    } catch (e) {
+      print("❌ Error deleting bid: $e");
+    }
+  }
+
+  void confirmDelete(String requestId) {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: Text("Delete Bid"),
+        content: Text("Are you sure you want to delete this bid?"),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text("Cancel"),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              deleteBid(requestId);
+            },
+            child: Text("Delete", style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
-      length: 3,
+      length: 2,
       child: Scaffold(
         appBar: AppBar(
-          title: Text("Snow Plow Requests",
-          style: GoogleFonts.poppins(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-            fontSize: 20
-          ),
-          ),
+          title: Text("Snow Plow",
+              style: GoogleFonts.poppins(
+                  color: Colors.white, fontWeight: FontWeight.bold, fontSize: 20)),
           backgroundColor: Colors.teal[100],
-          actions: [
+            actions: [
             IconButton(
               icon: Icon(Icons.add),
               onPressed: () => Navigator.pushNamed(context, "/request"),
             ),
           ],
           bottom: TabBar(
-            unselectedLabelStyle: GoogleFonts.poppins(color: Colors.white,fontWeight: FontWeight.bold),
-              labelStyle: GoogleFonts.poppins(color: Colors.blue,fontWeight: FontWeight.bold),
-              tabs: [
-            Tab(text: "Active"),
-            Tab(text: "Pending"),
-            Tab(text: "Completed"),
-          ]),
+            unselectedLabelStyle: GoogleFonts.poppins(
+                color: Colors.white, fontWeight: FontWeight.bold),
+            labelStyle: GoogleFonts.poppins(
+                color: Colors.blue, fontWeight: FontWeight.bold),
+            tabs: const [
+              Tab(text: "Requests"),
+              Tab(text: "Bid Requests"),
+            ],
+          ),
         ),
-        body: TabBarView(children: [
-          requestList("Active"),
-          requestList("Pending"),
-          requestList("Completed"),
-        
-        ]),
+        body: TabBarView(
+          children: [
+            buildRequestList(),
+            buildBidList(),
+          ],
+        ),
       ),
     );
   }
-  Widget requestList(String status) {
-    List<Map<String, dynamic>> filteredRequest;
 
-    if (status == "Active") {
-      print("🔥 Before Filtering - All Requests: ${requests.map((r) => r["status"])}");
+  Widget buildRequestList() {
+    return requests.isEmpty
+        ? Center(child: CircularProgressIndicator())
+        : ListView.builder(
+        itemCount: requests.length,
+        itemBuilder: (context, index) {
+          final request = requests[index];
+          return Card(
+            margin: EdgeInsets.all(10),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(15),
+            ),
+            elevation: 5,
+            child: ListTile(
+              title: Text("Area : ${request["area"]} sq ft"),
+              subtitle: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text("Date: ${request["date"]}"),
+                  Text("Time: ${request["time"]}"),
+                  Text("Type: ${request["requestType"]}"),
+                  if (request["requestType"] == "Direct")
+                    Text("Agency: ${request["selectedAgency"]}"),
+                  Text("Status: ${request["status"]}",
+                      style: TextStyle(fontWeight: FontWeight.bold)),
+                ],
+              ),
+              trailing: Icon(Icons.snowing),
+            ),
+          );
+        });
+  }
 
-      filteredRequest = requests.where((req) {
-        String requestStatus = req["status"].toString().trim().toLowerCase();
-        print("🔍 Checking Request: Status = $requestStatus");
-
-        return requestStatus == "accepted"; // Ensure proper case handling
-      }).toList();
-
-      print("✅ Filtered Requests for 'Active': ${filteredRequest.length}");
-
-    } else {
-      // Normal filtering for Pending/Completed
-      filteredRequest = requests.where((req) =>
-      req["status"].toString().trim().toLowerCase() == status.toLowerCase()
-      ).toList();
+  Widget buildBidList() {
+    if (isBidLoading) {
+      return Center(child: CircularProgressIndicator());
+    }
+    if (bids.isEmpty) {
+      return Center(child: Text("No bids found."));
     }
 
-    print("✅ Final Requests for '$status': ${filteredRequest.length}");
-
-
-
-
-    return filteredRequest.isEmpty
-        ? Center(child: CircularProgressIndicator())
-        : filteredRequest.isEmpty
-        ? Center(
-      child: Text(
-        "No requests found!",
-        style: TextStyle(fontSize: 16),
-      ),
-    )
-        : ListView.builder(
-      itemCount: filteredRequest.length,
+    return ListView.builder(
+      itemCount: bids.length,
       itemBuilder: (context, index) {
-        final request = filteredRequest[index];
+        final bid = bids[index];
         return Card(
           margin: EdgeInsets.all(10),
           shape: RoundedRectangleBorder(
@@ -231,23 +539,24 @@ class _orderListState extends State<orderList> {
           ),
           elevation: 5,
           child: ListTile(
-            title: Text("Area : ${request["area"]} sq ft"),
+            title: Text("Bid ID: ${bid["bid_request_id"] ?? "N/A"}"),
             subtitle: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text("Date: ${request["date"]}"),
-                Text("Time: ${request["time"]}"),
-                Text("Type: ${request["requestType"]}"),
-                if (request["requestType"] == "Direct")
-                  Text("Agency: ${request["selectedAgency"]}"),
-                Text("Status: ${request["status"]}", style: TextStyle(fontWeight: FontWeight.bold)),
+                Text("Address: ${bid["service_street"] ?? "N/A"}"),
+                Text("city: ${bid[" service_city"] ?? "None"}"),
+                Text("Agency ID: ${bid["agency_id"] ?? "N/A"}"),
               ],
             ),
-            trailing: Icon(Icons.snowing),
+            trailing: IconButton(
+              icon: Icon(Icons.delete, color: Colors.red),
+              onPressed: () {
+                confirmDelete(bid["bid_request_id"].toString());
+              },
+            ),
           ),
         );
       },
     );
   }
-
 }

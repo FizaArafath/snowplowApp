@@ -58,7 +58,7 @@ class _PlaceBidScreenState extends State<PlaceBidScreen> {
   void _extractCustomerDetails() {
     final customerData = widget.bidRequestList.firstWhere(
           (item) => item['customer_id'].toString() == widget.customerId,
-      orElse: () => null,
+      orElse: () => <String, dynamic>{},
     );
 
     if (customerData != null) {
