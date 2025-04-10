@@ -501,6 +501,87 @@ String? _selectedService;
 
 
   //sumbit request
+  // void _submitForm() async {
+  //   print("Submit button pressed");
+  //   if (_formkey.currentState!.validate()) {
+  //     if (_selectedDate == null || _selectedTime == null) {
+  //       ScaffoldMessenger.of(context).showSnackBar(
+  //         SnackBar(
+  //           content: Text("Please select both date and time"),
+  //           backgroundColor: Colors.teal[200],
+  //         ),
+  //       );
+  //       return;
+  //     }
+  //     print("case 2");
+  //
+  //     SharedPreferences prefs = await SharedPreferences.getInstance();
+  //     String? userId = prefs.getString('userId');
+  //
+  //     if (userId == null) {
+  //       ScaffoldMessenger.of(context).showSnackBar(
+  //           SnackBar(content: Text("User not authenticated")));
+  //       return;
+  //     }
+  //
+  //     // Check if location data is available
+  //     if (_latitude == null || _longitude == null) {
+  //       ScaffoldMessenger.of(context).showSnackBar(
+  //         SnackBar(content: Text("Please provide a valid location")),
+  //       );
+  //       return;
+  //     }
+  //
+  //     List<String> base64Images = [];
+  //     for (var image in _selectedImages) {
+  //       List<int> imageBytes = await image.readAsBytes();
+  //       String base64Image = base64Encode(imageBytes);
+  //       base64Images.add(base64Image);
+  //     }
+  //
+  //     try {
+  //       final response = await http.post(
+  //         Uri.parse("https://snowplow.celiums.com/api/requests/companyrequest"),
+  //         headers: {
+  //           "Content-Type": "application/json",
+  //           "Accept": "application/json",
+  //           "Authorization": "7161092a3ab46fb924d464e65c84e355",
+  //         },
+  //         body: jsonEncode({
+  //           "customer_id": userId,
+  //           "agency_id": _selectedOptions == "Direct" ? _selectedAgency ?? "" : "",
+  //           "service_type": _selectedServiceType, // Now correctly set
+  //           "service_area": _areaControlller.text,
+  //           "address": _currentAddress,
+  //           "preferred_time": _selectedTime!.format(context),
+  //           "preferred_date": DateFormat("dd-MM-yyyy").format(_selectedDate!),
+  //           "image": base64Images.join(","),
+  //           "image_ext": "jpg",
+  //           "urgency_level": "fast",
+  //           "service_latitude": _latitude!.toString(),
+  //           "service_longitude": _longitude!.toString(),
+  //           "api_mode": "test",
+  //         }),
+  //       );
+  //
+  //       if (response.statusCode == 200 || response.statusCode == 201) {
+  //         // Handle success
+  //
+  //         print(response.body);
+  //         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("request send successfully...!")));
+  //
+  //       } else {
+  //         print("API Error: ${response.body}");
+  //         throw Exception("API returned ${response.statusCode}");
+  //       }
+  //     } catch (e) {
+  //       print("Submission error: $e");
+  //     }
+  //   }
+  // }
+
+
+
   void _submitForm() async {
     print("Submit button pressed");
     if (_formkey.currentState!.validate()) {
@@ -513,18 +594,17 @@ String? _selectedService;
         );
         return;
       }
-      print("case 2");
 
       SharedPreferences prefs = await SharedPreferences.getInstance();
       String? userId = prefs.getString('userId');
 
       if (userId == null) {
         ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text("User not authenticated")));
+          SnackBar(content: Text("User not authenticated")),
+        );
         return;
       }
 
-      // Check if location data is available
       if (_latitude == null || _longitude == null) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text("Please provide a valid location")),
@@ -540,39 +620,67 @@ String? _selectedService;
       }
 
       try {
-        final response = await http.post(
-          Uri.parse("https://snowplow.celiums.com/api/requests/companyrequest"),
-          headers: {
-            "Content-Type": "application/json",
-            "Accept": "application/json",
-            "Authorization": "7161092a3ab46fb924d464e65c84e355",
-          },
-          body: jsonEncode({
-            "customer_id": userId,
-            "agency_id": _selectedOptions == "Direct" ? _selectedAgency ?? "" : "",
-            "service_type": _selectedServiceType, // Now correctly set
-            "service_area": _areaControlller.text,
-            "address": _currentAddress,
-            "preferred_time": _selectedTime!.format(context),
-            "preferred_date": DateFormat("dd-MM-yyyy").format(_selectedDate!),
-            "image": base64Images.join(","),
-            "image_ext": "jpg",
-            "urgency_level": "fast",
-            "service_latitude": _latitude!.toString(),
-            "service_longitude": _longitude!.toString(),
-            "api_mode": "test",
-          }),
-        );
+        if (_selectedOptions == "Bid") {
+          /// 🔁 Handle Bid Option
+          final bidResponse = await http.post(
+            Uri.parse("https://snowplow.celiums.com/api/bids/bidrequest"),
+            headers: {
+              "Content-Type": "application/json",
+              "Accept": "application/json",
+            },
+            body: jsonEncode({
+              "agency_id": _selectedAgency ?? "",
+              "comments": _areaControlller.text, // Or another comments field
+              "customer_id": userId,
+              "api_mode": "test",
+            }),
+          );
 
-        if (response.statusCode == 200 || response.statusCode == 201) {
-          // Handle success
-
-          print(response.body);
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("request send successfully...!")));
+          if (bidResponse.statusCode == 200 || bidResponse.statusCode == 201) {
+            print("✅ Bid request sent: ${bidResponse.body}");
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text("Bid request sent successfully!")),
+            );
+          } else {
+            print("Bid API Error: ${bidResponse.body}");
+            throw Exception("Bid API returned ${bidResponse.statusCode}");
+          }
 
         } else {
-          print("API Error: ${response.body}");
-          throw Exception("API returned ${response.statusCode}");
+          /// 🧾 Handle Direct Option (your original method)
+          final response = await http.post(
+            Uri.parse("https://snowplow.celiums.com/api/requests/companyrequest"),
+            headers: {
+              "Content-Type": "application/json",
+              "Accept": "application/json",
+              "Authorization": "7161092a3ab46fb924d464e65c84e355",
+            },
+            body: jsonEncode({
+              "customer_id": userId,
+              "agency_id": _selectedAgency ?? "",
+              "service_type": _selectedServiceType,
+              "service_area": _areaControlller.text,
+              "address": _currentAddress,
+              "preferred_time": _selectedTime!.format(context),
+              "preferred_date": DateFormat("dd-MM-yyyy").format(_selectedDate!),
+              "image": base64Images.join(","),
+              "image_ext": "jpg",
+              "urgency_level": "fast",
+              "service_latitude": _latitude!.toString(),
+              "service_longitude": _longitude!.toString(),
+              "api_mode": "test",
+            }),
+          );
+
+          if (response.statusCode == 200 || response.statusCode == 201) {
+            print(response.body);
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text("Request sent successfully!")),
+            );
+          } else {
+            print("API Error: ${response.body}");
+            throw Exception("API returned ${response.statusCode}");
+          }
         }
       } catch (e) {
         print("Submission error: $e");
