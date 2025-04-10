@@ -112,42 +112,48 @@ class _profileScreenState extends State<profileScreen> {
 
     try {
       SharedPreferences prefs = await SharedPreferences.getInstance();
-      String? token = prefs.getString("token");
+      String? token = prefs.getString("apiKey"); // ✅ Match the token key used during login
+      String? customerId = prefs.getString("userId");
 
-      if (token == null) {
+      if (token == null || customerId == null) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text("Please login again")),
         );
         return;
       }
 
-      // Prepare the request body
       Map<String, dynamic> body = {
-        'name': nameController.text,
-        'email': email,
-        'contact': contactController.text,
-        'address': addressController.text,
+        'customer_id': customerId, // ✅ Required by backend
+        'customer_name': nameController.text,
+        'customer_email': email,
+        'customer_phone': contactController.text,
+        'customer_address': addressController.text,
+        'api_mode': 'test',
       };
 
-      // Make the API call
       final response = await http.post(
         Uri.parse(url),
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
+          'Authorization': 'Bearer $token', // ✅ Add Bearer here too
           'api_mode': 'test',
         },
         body: jsonEncode(body),
       );
 
       if (response.statusCode == 200) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text("Profile updated successfully")),
-          );
+        final data = jsonDecode(response.body);
+        if (data['status'] == 'success') {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text("Profile updated successfully")),
+            );
+          }
+        } else {
+          throw Exception(data['message'] ?? "Update failed");
         }
       } else {
-        throw Exception("Failed to update profile");
+        throw Exception("Failed to update profile: ${response.statusCode}");
       }
     } catch (e) {
       if (mounted) {
@@ -157,6 +163,7 @@ class _profileScreenState extends State<profileScreen> {
       }
     }
   }
+
 
 
   Future<void> deleteCompanyProfile() async {

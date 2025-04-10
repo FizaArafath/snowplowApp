@@ -584,6 +584,7 @@ String? _selectedService;
 
   void _submitForm() async {
     print("Submit button pressed");
+
     if (_formkey.currentState!.validate()) {
       if (_selectedDate == null || _selectedTime == null) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -612,6 +613,7 @@ String? _selectedService;
         return;
       }
 
+      // Convert selected images to Base64
       List<String> base64Images = [];
       for (var image in _selectedImages) {
         List<int> imageBytes = await image.readAsBytes();
@@ -621,7 +623,7 @@ String? _selectedService;
 
       try {
         if (_selectedOptions == "Bid") {
-          /// 🔁 Handle Bid Option
+          /// 🔁 BID REQUEST
           final bidResponse = await http.post(
             Uri.parse("https://snowplow.celiums.com/api/bids/bidrequest"),
             headers: {
@@ -630,7 +632,7 @@ String? _selectedService;
             },
             body: jsonEncode({
               "agency_id": _selectedAgency ?? "",
-              "comments": _areaControlller.text, // Or another comments field
+              "comments": _areaControlller.text,
               "customer_id": userId,
               "api_mode": "test",
             }),
@@ -642,18 +644,18 @@ String? _selectedService;
               SnackBar(content: Text("Bid request sent successfully!")),
             );
           } else {
-            print("Bid API Error: ${bidResponse.body}");
+            print("❌ Bid API Error: ${bidResponse.body}");
             throw Exception("Bid API returned ${bidResponse.statusCode}");
           }
 
         } else {
-          /// 🧾 Handle Direct Option (your original method)
+          /// 🧾 DIRECT REQUEST
           final response = await http.post(
             Uri.parse("https://snowplow.celiums.com/api/requests/companyrequest"),
             headers: {
               "Content-Type": "application/json",
               "Accept": "application/json",
-              "Authorization": "7161092a3ab46fb924d464e65c84e355",
+              "Authorization": "7161092a3ab46fb924d464e65c84e355", // If required
             },
             body: jsonEncode({
               "customer_id": userId,
@@ -673,20 +675,24 @@ String? _selectedService;
           );
 
           if (response.statusCode == 200 || response.statusCode == 201) {
-            print(response.body);
+            print("✅ Direct request sent: ${response.body}");
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(content: Text("Request sent successfully!")),
             );
           } else {
-            print("API Error: ${response.body}");
+            print("❌ API Error: ${response.body}");
             throw Exception("API returned ${response.statusCode}");
           }
         }
       } catch (e) {
         print("Submission error: $e");
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Something went wrong. Please try again.")),
+        );
       }
     }
   }
+
 
 
 

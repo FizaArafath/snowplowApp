@@ -53,6 +53,14 @@ class MyApp extends StatelessWidget {
         "/companyHomePage": (context) => ServiceProviderHome(),
         "/companyBottomNavigation": (context) => CompanyBottomNavigation()
       },
+      // onGenerateRoute: (settings){
+      //   if(settings.name == "/orderList"){
+      //     final args = settings.arguments as Map<String,dynamic>;
+      //     return MaterialPageRoute(builder: (context) => RequestListScreen(agencyId: args['agencyId'],));
+      //   }
+      //   return null;
+      //
+      // },
 
       // home:directPlaceOrder(),
     );

@@ -9,7 +9,7 @@ import 'package:firebase_storage/firebase_storage.dart';
 
 class directPlaceOrder extends StatefulWidget {
   final String requestId;
-  const directPlaceOrder({super.key, required this.requestId});
+  const directPlaceOrder({super.key, required this.requestId, required String customerId, required customerAddress, required approximateArea, required String photoUrl, required preferredTime, required preferredDate});
 
   @override
   State<directPlaceOrder> createState() => _directPlaceOrderState();

@@ -6,7 +6,23 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 class PlaceBidScreen extends StatefulWidget {
   final String requestId;
-  const PlaceBidScreen({super.key, required this.requestId});
+  final String customerId;
+  final List<dynamic> bidRequestList;
+  final VoidCallback onBidPlaced;
+
+  const PlaceBidScreen({
+    super.key,
+    required this.requestId,
+    required this.customerId,
+    required this.bidRequestList,
+    required customerAddress,
+    required approximateArea,
+    required preferredDate,
+    required preferredTime,
+    required String photoUrl,
+    //required Future<void> Function() onBidPlaced,
+    required this.onBidPlaced,
+  });
 
   @override
   State<PlaceBidScreen> createState() => _PlaceBidScreenState();
@@ -15,9 +31,16 @@ class PlaceBidScreen extends StatefulWidget {
 class _PlaceBidScreenState extends State<PlaceBidScreen> {
   final _formKey = GlobalKey<FormState>();
   bool _isLoading = true;
+
+  // User details
+  String userName = "N/A";
+  String userEmail = "N/A";
+  String userPhone = "N/A";
+
+  // Request details
   String customerAddress = "N/A";
   String approximateArea = "N/A";
-  String photoUrl = "https://via.placeholder.com/150";
+  String photoUrl = "";
   String preferredTime = "N/A";
   String preferredDate = "N/A";
 
@@ -27,148 +50,149 @@ class _PlaceBidScreenState extends State<PlaceBidScreen> {
   @override
   void initState() {
     super.initState();
-    _fetchRequestDetails();
+    _extractCustomerDetails();
+    _fetchUserDetails();
+    // Removed _updateRequestStatus from here
   }
 
-  String _formatDateManually(String dateString) {
-    if (dateString == "N/A") return dateString; // Handle missing date
+  void _extractCustomerDetails() {
+    final customerData = widget.bidRequestList.firstWhere(
+          (item) => item['customer_id'].toString() == widget.customerId,
+      orElse: () => null,
+    );
 
-    try {
-      // Extract only 'yyyy-MM-dd' part (ignoring time if present)
-      List<String> parts = dateString.split("T")[0].split("-");
-
-      // Rearrange as 'dd/MM/yyyy'
-      return "${parts[2]}/${parts[1]}/${parts[0]}";
-    } catch (e) {
-      return "Invalid Date";
+    if (customerData != null) {
+      customerAddress = customerData['service_street'] ?? "N/A";
+      approximateArea = customerData['service_area'] ?? "N/A";
+      photoUrl = "https://snowplow.celiums.com/uploads/${customerData['image']}";
+      preferredTime = customerData['preferred_time'] ?? "N/A";
+      preferredDate = customerData['preferred_date'] ?? "N/A";
     }
   }
 
-
-  Future<void> _fetchRequestDetails() async {
-    String apiUrl =
-        "https://firestore.googleapis.com/v1/projects/snow-plow-d24c0/databases/(default)/documents/bid_requests/${widget.requestId}";
-
+  Future<void> _fetchUserDetails() async {
+    final apiUrl = "https://snowplow.celiums.com/api/users/profile";
     try {
-      final response = await http.get(Uri.parse(apiUrl));
-      if (response.statusCode == 200) {
-        final Map<String, dynamic> data = jsonDecode(response.body);
-        final fields = data['fields'] as Map<String,dynamic>;
+      final response = await http.post(
+        Uri.parse(apiUrl),
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({"customer_id": widget.customerId}),
+      );
 
-        setState(() {
-          customerAddress = fields['address']?['stringValue'] ?? "N/A";
-          approximateArea = fields['area']?['stringValue'] ?? "N/A";
-          photoUrl = fields['photoUrl']?['stringValue'] ?? "https://via.placeholder.com/150";
-          preferredTime = fields['time']?['stringValue'] ?? "N/A";
-          String rawDate = fields['date']?['stringValue'] ?? "N/A";
-          preferredDate = _formatDateManually(rawDate);
-          _isLoading = false;
-        });
-      } else {
-        throw Exception('Failed to load request details');
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data['status'] == 1 && data['data'] != null) {
+          final user = data['data'];
+          setState(() {
+            userName = user['name'] ?? "N/A";
+            userEmail = user['email'] ?? "N/A";
+            userPhone = user['phone'] ?? "N/A";
+          });
+        }
       }
     } catch (e) {
+      print("Error fetching user profile: $e");
+    } finally {
       setState(() {
         _isLoading = false;
       });
     }
   }
 
+  Future<void> _updateRequestStatus() async {
+    final statusUpdateUrl = "https://snowplow.celiums.com/api/bids/bidupdate";
+
+    try {
+      final response = await http.post(
+        Uri.parse(statusUpdateUrl),
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({
+          "request_id": widget.requestId,
+          "status": "bid placed",
+          "api_mode": "test"
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        print("Status updated successfully");
+      } else {
+        print("Failed to update status: ${response.body}");
+      }
+    } catch (e) {
+      print("Error updating status: $e");
+    }
+  }
+
   Future<void> _submitBid() async {
     if (_formKey.currentState!.validate()) {
-      // Show loading indicator
+      // Validate bid amount is a positive number
+      if (double.tryParse(bidAmountController.text) == null || double.parse(bidAmountController.text) <= 0) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Please enter a valid bid amount")),
+        );
+        return;
+      }
+
       setState(() {
         _isLoading = true;
       });
 
       try {
-        // Get current user ID (you'll need to implement this)
+        // Get the agency ID from shared preferences
         SharedPreferences prefs = await SharedPreferences.getInstance();
-        String? userId = prefs.getString('userId');
-        SharedPreferences pref = await SharedPreferences.getInstance();
-        String? companyId = pref.getString('companyId');
+        String? agencyId = prefs.getString('companyId');
 
-        if (userId == null) {
-          throw Exception('User not authenticated');
+        if (agencyId == null) {
+          throw Exception('Missing agency ID');
         }
 
-        // Prepare the bid data
-        Map<String, dynamic> bidData = {
-          "bidAmount": bidAmountController.text,
-          "notes": notesController.text,
-          "requestId": widget.requestId,
-          "userId": userId,
-          "customerAddress": customerAddress,
-          "approximateArea": approximateArea,
-          "preferredTime": preferredTime,
-          "preferredDate": preferredDate,
-          "photoUrl": photoUrl,
-          "status": "pending", // or "submitted" depending on your workflow
-          "timestamp": DateTime.now().toIso8601String(),
-        };
+        // API URL for submitting the bid
+        final apiUrl = "https://snowplow.celiums.com/api/bids/createbid";
 
-        // Post to Firebase
-        String apiUrl =
-            "https://firestore.googleapis.com/v1/projects/snow-plow-d24c0/databases/(default)/documents/placedBids";
-
+        // Prepare request body
         final response = await http.post(
           Uri.parse(apiUrl),
           headers: {"Content-Type": "application/json"},
           body: jsonEncode({
-            "fields": {
-              "bidAmount": {"stringValue": bidAmountController.text},
-              "notes": {"stringValue": notesController.text},
-              "requestId": {"stringValue": widget.requestId},
-              "userId": {"stringValue": userId},
-              "companyId": {"stringValue": companyId},
-              "customerAddress": {"stringValue": customerAddress},
-              "approximateArea": {"stringValue": approximateArea},
-              "preferredTime": {"stringValue": preferredTime},
-              "preferredDate": {"stringValue": preferredDate},
-              "photoUrl": {"stringValue": photoUrl},
-              "status": {"stringValue": "pending"},
-              "createdAt": {"timestampValue": DateTime.now().toUtc().toIso8601String()},
-            }
+            "bid_request_id": widget.requestId,
+            "agency_id": agencyId,
+            "price": bidAmountController.text,
+            "comments": notesController.text,
+            "api_mode": "test",
           }),
         );
 
-        String updateApiUrl = "https://firestore.googleapis.com/v1/projects/snow-plow-d24c0/databases/(default)/documents/bid_requests/${widget.requestId}";
+        final resData = jsonDecode(response.body);
 
-        final updateResponse = await http.patch(
-          Uri.parse(updateApiUrl),
-          headers: {"Content-Type": "application/json"},
-          body: jsonEncode({
-            "fields": {
-              "status": {"stringValue": "bid placed"},
-              "bidAmount": {"stringValue": bidAmountController.text},
-              "notes": {"stringValue": notesController.text},
-              "requestId": {"stringValue": widget.requestId},
-              "userId": {"stringValue": userId},
-              "companyId": {"stringValue": companyId},
-              "customerAddress": {"stringValue": customerAddress},
-              "approximateArea": {"stringValue": approximateArea},
-              "preferredTime": {"stringValue": preferredTime},
-              "preferredDate": {"stringValue": preferredDate},
-              "photoUrl": {"stringValue": photoUrl},
-              "createdAt": {"timestampValue": DateTime.now().toUtc().toIso8601String()},
+        // Check if the response is successful
+        if (response.statusCode == 200 && resData['status'] == 1) {
+          // ✅ BID SUBMITTED SUCCESSFULLY, NOW UPDATE STATUS TO "Pending"
+          await _updateRequestStatus();
 
-
-            }
-          }),
-        );
-
-        if (updateResponse.statusCode == 200) {
+          // Notify user of success
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text("Bid submitted successfully!"),
               backgroundColor: Colors.teal[100],
             ),
           );
-          Navigator.pop(context); // Close the screen after successful submission
+
+          // Optionally trigger the callback function in the parent screen
+          widget.onBidPlaced();
+
+          // Update the screen status if needed
+          setState(() {
+            widget.onBidPlaced();
+            // You can also update some UI elements here if necessary
+          });
+
+          // Pop the screen to go back to the previous screen
+          Navigator.pop(context, true); // Make sure parent screen handles refresh
         } else {
-          throw Exception('Failed to submit bid: ${response.body}');
+          throw Exception(resData['message'] ?? "Failed to submit bid");
         }
       } catch (e) {
+        // Handle errors
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text("Error submitting bid: $e"),
@@ -176,6 +200,7 @@ class _PlaceBidScreenState extends State<PlaceBidScreen> {
           ),
         );
       } finally {
+        // Reset loading state
         setState(() {
           _isLoading = false;
         });
@@ -183,40 +208,16 @@ class _PlaceBidScreenState extends State<PlaceBidScreen> {
     }
   }
 
-  //reject order
-  Future<void> _rejectOrder() async {
-    String apiUrl =
-        "https://firestore.googleapis.com/v1/projects/snow-plow-d24c0/databases/(default)/documents/bid_requests/${widget.requestId}";
 
-    try {
-      final response = await http.delete(Uri.parse(apiUrl));
-      if (response.statusCode == 200) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text("Bid request rejected and deleted successfully!"),
-            backgroundColor: Colors.redAccent,
-          ),
-        );
-        Navigator.pop(context); // Close the screen after rejection
-      } else {
-        throw Exception('Failed to delete request');
-      }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text("Error: Unable to delete request"),
-          backgroundColor: Colors.redAccent,
-        ),
-      );
-    }
-  }
+
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Colors.teal[100],
-        title: Text("Place Your Bid",style: GoogleFonts.poppins(color: Colors.white,fontSize: 22,fontWeight: FontWeight.bold)),
+        title: Text("Place Your Bid",
+            style: GoogleFonts.poppins(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold)),
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -228,27 +229,39 @@ class _PlaceBidScreenState extends State<PlaceBidScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                _buildSectionTitle("User Details"),
+                _buildReadOnlyField("Name", userName),
+                _buildReadOnlyField("Email", userEmail),
+                _buildReadOnlyField("Phone", userPhone),
+                const SizedBox(height: 16),
+
+                _buildSectionTitle("Request Details"),
                 _buildReadOnlyField("Address", customerAddress),
                 _buildReadOnlyField("Approximate Area", approximateArea),
                 _buildReadOnlyField("Preferred Time", preferredTime),
                 _buildReadOnlyField("Preferred Date", preferredDate),
+
                 const SizedBox(height: 10),
-                const Text("Uploaded Photos",
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                const Text("Uploaded Photo", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 5),
-                Center(
-                  child: Image.network(photoUrl, height: 100, width: 100, fit: BoxFit.cover),
-                ),
+                Center(child: Image.network(photoUrl, height: 100, width: 100, fit: BoxFit.cover)),
                 const SizedBox(height: 15),
+
                 _buildTextField(bidAmountController, "Bid Amount", isNumber: true),
                 _buildTextField(notesController, "Additional Notes", maxLines: 3),
+
                 const SizedBox(height: 20),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: [
-                    _buildButton("Bid", Colors.teal[200]!, _submitBid),
-                    _buildButton("Reject", Colors.redAccent, _rejectOrder),
-                  ],
+                Center(
+                  child: ElevatedButton(
+                    onPressed: _submitBid,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.teal[200],
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 50, vertical: 12),
+                    ),
+                    child: Text("Submit Bid",
+                        style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.bold)),
+                  ),
                 ),
               ],
             ),
@@ -260,14 +273,14 @@ class _PlaceBidScreenState extends State<PlaceBidScreen> {
 
   Widget _buildReadOnlyField(String label, String value) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      padding: const EdgeInsets.symmetric(vertical: 6.0),
       child: TextFormField(
         style: GoogleFonts.poppins(),
         initialValue: value,
         readOnly: true,
         decoration: InputDecoration(
           labelText: label,
-          border: OutlineInputBorder(),
+          border: const OutlineInputBorder(),
           filled: true,
           fillColor: Colors.grey[200],
         ),
@@ -298,15 +311,13 @@ class _PlaceBidScreenState extends State<PlaceBidScreen> {
     );
   }
 
-  Widget _buildButton(String text, Color color, VoidCallback onPressed) {
-    return ElevatedButton(
-      onPressed: onPressed,
-      style: ElevatedButton.styleFrom(
-        backgroundColor: color,
-        foregroundColor: Colors.white,
-        padding: const EdgeInsets.symmetric(horizontal: 60, vertical: 12),
+  Widget _buildSectionTitle(String text) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 10),
+      child: Text(
+        text,
+        style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.teal[800]),
       ),
-      child: Text(text,style: GoogleFonts.poppins(color: Colors.white,fontSize: 16,fontWeight: FontWeight.bold)),
     );
   }
 }
