@@ -28,27 +28,34 @@ class _homePageState extends State<homePage> {
 
 
   Future<void> fetchCompanies() async {
-    const String apiUrl =
-        "https://firestore.googleapis.com/v1/projects/snow-plow-d24c0/databases/(default)/documents/companies";
+    const String apiUrl = "https://snowplow.celiums.com/api/agencies/list";
 
     try {
-      final response = await http.get(Uri.parse(apiUrl));
+      final response = await http.post(
+        Uri.parse(apiUrl),
+        headers: {
+          "Content-Type": "application/json",
+          "Accept": "application/json",
+        },
+        body: jsonEncode({
+          "per_page": "10",
+          "page": "0", // or make it dynamic if you want pagination
+          "api_mode": "test",
+        }),
+      );
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        final documents = data['documents'] as List<dynamic>?;
+        final agencyList = data['data'] as List<dynamic>?;
 
-        if (documents != null) {
-          List<dynamic> companyList = documents.map((doc) {
-            final fields = doc['fields'] ?? {};
-
+        if (agencyList != null) {
+          List<dynamic> companyList = agencyList.map((agency) {
             return {
-              'name': fields['companyName']?['stringValue'] ?? 'Unknown',
-              'email': fields['email']?['stringValue'] ?? 'No Email',
-              'address': fields['address']?['stringValue'] ?? 'No Address',
-              'contact': fields['contact']?['stringValue'] ?? 'No Contact',
-              'id':fields['companyId']?['stringValue']?? ''
-              // 'rating': fields['rating']?['stringValue'] ?? 'No Rating',
+              'name': agency['agency_name'] ?? 'Unknown',
+              'email': agency['email'] ?? 'No Email',
+              'address': agency['address'] ?? 'No Address',
+              'contact': agency['contact'] ?? 'No Contact',
+              'id': agency['id'].toString(),
             };
           }).toList();
 
@@ -59,15 +66,16 @@ class _homePageState extends State<homePage> {
           });
         }
       } else {
-        throw Exception("Failed to load companies");
+        throw Exception("Failed to load agencies. Status: ${response.statusCode}");
       }
     } catch (e) {
       setState(() {
         isLoading = false;
       });
-      print("🔥 Error fetching companies: $e");
+      print("🔥 Error fetching agencies: $e");
     }
   }
+
 
   void searchCompany(String query) {
     setState(() {

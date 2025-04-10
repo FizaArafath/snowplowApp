@@ -26,58 +26,116 @@ class _orderListState extends State<orderList> {
 
 
 
+  // Future<void> fetchRequest() async {
+  //   try {
+  //     SharedPreferences prefs = await SharedPreferences.getInstance();
+  //     String? userId = prefs.getString("userId");  // Retrieve logged-in user ID
+  //
+  //     if (userId == null) {
+  //       print("⚠️ User ID not found!");
+  //       return;
+  //     }
+  //
+  //     final response = await http.get(
+  //       Uri.parse(apiUrl),
+  //       headers: {"Content-Type": "application/json"},
+  //     );
+  //
+  //     print("Response Code: ${response.statusCode}");
+  //
+  //     if (response.statusCode == 200) {
+  //       final data = jsonDecode(response.body);
+  //       List<Map<String, dynamic>> loadedRequests = [];
+  //
+  //       if (data["documents"] != null) {
+  //         for (var doc in data["documents"]) {
+  //           var fields = doc["fields"];
+  //
+  //           // Extract request owner's ID from Firestore
+  //           String? requestOwnerId = fields.containsKey("userId") ? fields["userId"]["stringValue"] : null;
+  //
+  //           // 🔥 Only process requests that belong to the logged-in user
+  //           if (requestOwnerId != null && requestOwnerId == userId) {
+  //             String? rawStatus = fields.containsKey("status") ? fields["status"]["stringValue"] : null;
+  //             String status = rawStatus?.trim().toLowerCase() ?? "pending";
+  //
+  //             loadedRequests.add({
+  //               "area": fields.containsKey("area") ? fields["area"]["stringValue"] ?? "Unknown" : "Unknown",
+  //               "date": fields.containsKey("date") ? fields["date"]["stringValue"] ?? "N/A" : "N/A",
+  //               "time": fields.containsKey("time") ? fields["time"]["stringValue"] ?? "N/A" : "N/A",
+  //               "requestType": fields.containsKey("serviceType") ? fields["serviceType"]["stringValue"] ?? "Unknown" : "Unknown",
+  //               "selectedAgency": fields.containsKey("agency") ? fields["agency"]["stringValue"] ?? "N/A" : "N/A",
+  //               "status": status,
+  //             });
+  //
+  //             print("✅ Added Request for User ID: $userId -> ${loadedRequests.last}");
+  //           }
+  //         }
+  //       }
+  //
+  //       setState(() {
+  //         requests = loadedRequests;
+  //       });
+  //
+  //       print("🔥 Total Requests for Logged-In User: ${requests.length}");
+  //     } else {
+  //       throw Exception("Failed to load requests. Status Code: ${response.statusCode}");
+  //     }
+  //   } catch (e) {
+  //     print("❌ Error fetching requests: $e");
+  //   }
+  // }
+
+  final String Url = "https://snowplow.celiums.com/api/requests/getrequests"; // your PHP endpoint
+
   Future<void> fetchRequest() async {
     try {
       SharedPreferences prefs = await SharedPreferences.getInstance();
-      String? userId = prefs.getString("userId");  // Retrieve logged-in user ID
+      String? userId = prefs.getString("userId");
 
       if (userId == null) {
         print("⚠️ User ID not found!");
         return;
       }
 
-      final response = await http.get(
+      final response = await http.post(
         Uri.parse(apiUrl),
         headers: {"Content-Type": "application/json"},
+        body: jsonEncode({
+          "customer_id": userId,
+          "api_mode": "test"
+        }),
       );
 
       print("Response Code: ${response.statusCode}");
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        List<Map<String, dynamic>> loadedRequests = [];
 
-        if (data["documents"] != null) {
-          for (var doc in data["documents"]) {
-            var fields = doc["fields"];
+        if (data["status"] == 1 && data["data"] != null) {
+          List<Map<String, dynamic>> loadedRequests = [];
 
-            // Extract request owner's ID from Firestore
-            String? requestOwnerId = fields.containsKey("userId") ? fields["userId"]["stringValue"] : null;
+          for (var req in data["data"]) {
+            String status = (req["status"] ?? "pending").toString().toLowerCase().trim();
 
-            // 🔥 Only process requests that belong to the logged-in user
-            if (requestOwnerId != null && requestOwnerId == userId) {
-              String? rawStatus = fields.containsKey("status") ? fields["status"]["stringValue"] : null;
-              String status = rawStatus?.trim().toLowerCase() ?? "pending";
-
-              loadedRequests.add({
-                "area": fields.containsKey("area") ? fields["area"]["stringValue"] ?? "Unknown" : "Unknown",
-                "date": fields.containsKey("date") ? fields["date"]["stringValue"] ?? "N/A" : "N/A",
-                "time": fields.containsKey("time") ? fields["time"]["stringValue"] ?? "N/A" : "N/A",
-                "requestType": fields.containsKey("serviceType") ? fields["serviceType"]["stringValue"] ?? "Unknown" : "Unknown",
-                "selectedAgency": fields.containsKey("agency") ? fields["agency"]["stringValue"] ?? "N/A" : "N/A",
-                "status": status,
-              });
-
-              print("✅ Added Request for User ID: $userId -> ${loadedRequests.last}");
-            }
+            loadedRequests.add({
+              "area": req["service_area"] ?? "Unknown",
+              "date": req["preferred_date"] ?? "N/A",
+              "time": req["preferred_time"] ?? "N/A",
+              "requestType": req["service_type"] ?? "Unknown",
+              "selectedAgency": req["agency_id"] ?? "N/A",
+              "status": status,
+            });
           }
+
+          setState(() {
+            requests = loadedRequests;
+          });
+
+          print("✅ Loaded ${requests.length} requests");
+        } else {
+          print("⚠️ No request data found");
         }
-
-        setState(() {
-          requests = loadedRequests;
-        });
-
-        print("🔥 Total Requests for Logged-In User: ${requests.length}");
       } else {
         throw Exception("Failed to load requests. Status Code: ${response.statusCode}");
       }
@@ -85,7 +143,6 @@ class _orderListState extends State<orderList> {
       print("❌ Error fetching requests: $e");
     }
   }
-
 
 
 
