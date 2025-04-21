@@ -6,34 +6,37 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:snowplow/widgets/customer/update_profile_screen.dart';
 
-class profileScreen extends StatefulWidget {
+class ProfileScreen extends StatefulWidget {
   final String userId;
-  const profileScreen({super.key,required this.userId});
+  const ProfileScreen({super.key, required this.userId});
 
   @override
-  State<profileScreen> createState() => _profileScreenState();
+  State<ProfileScreen> createState() => _ProfileScreenState();
 }
 
-class _profileScreenState extends State<profileScreen> {
+class _ProfileScreenState extends State<ProfileScreen> {
   TextEditingController nameController = TextEditingController();
   TextEditingController contactController = TextEditingController();
   TextEditingController addressController = TextEditingController();
-  String email = "";
+  TextEditingController emailController = TextEditingController();
+
   File? _image;
   String? userId;
+  bool isEditing = false;
 
   @override
   void initState() {
     super.initState();
-    userId = widget.userId; // Use the userId passed from widget
-    fetchProfileData(); // Directly call fetchProfileData
+    userId = widget.userId;
+    fetchProfileData();
   }
 
   Future<void> fetchProfileData() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     String? token = prefs.getString('apiKey');
-    String? customerId = prefs.getString('userId'); // Assuming this is the customer_id
+    String? customerId = prefs.getString('userId');
 
     if (token == null || customerId == null) {
       if (mounted) {
@@ -60,19 +63,15 @@ class _profileScreenState extends State<profileScreen> {
         }),
       );
 
-      print('Response status: ${response.statusCode}');
-      print('Response body: ${response.body}');
-
       if (response.statusCode == 200) {
         var data = jsonDecode(response.body);
-        print('Parsed data: $data');
 
-        if (data['status'] == 'success' && data['data'] != null) {
+        if ((data['status'] == 1 || data['status'] == 'success') && data['data'] != null) {
           var userData = data['data'];
           if (mounted) {
             setState(() {
               nameController.text = userData['customer_name'] ?? "";
-              email = userData['customer_email'] ?? "";
+              emailController.text = userData['customer_email'] ?? "";
               contactController.text = userData['customer_phone'] ?? "";
               addressController.text = userData['customer_address'] ?? "";
             });
@@ -93,58 +92,51 @@ class _profileScreenState extends State<profileScreen> {
           SnackBar(content: Text("Error loading profile: $e")),
         );
       }
-      print('Error details: $e');
     }
   }
 
-
-
-
   Future<void> updateCompanyProfile() async {
-    if (userId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Error: No user ID found. Please log in again.")),
-      );
-      return;
-    }
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    String? token = prefs.getString('apiKey');
+    String? customerId = prefs.getString('userId');
 
-    String url = "https://snowplow.celiums.com/api/profile/update";
-
-    try {
-      SharedPreferences prefs = await SharedPreferences.getInstance();
-      String? token = prefs.getString("apiKey"); // ✅ Match the token key used during login
-      String? customerId = prefs.getString("userId");
-
-      if (token == null || customerId == null) {
+    if (token == null || customerId == null) {
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text("Please login again")),
         );
-        return;
       }
+      return;
+    }
 
-      Map<String, dynamic> body = {
-        'customer_id': customerId, // ✅ Required by backend
-        'customer_name': nameController.text,
-        'customer_email': email,
-        'customer_phone': contactController.text,
-        'customer_address': addressController.text,
-        'api_mode': 'test',
-      };
+    Map<String, dynamic> body = {
+      'customer_id': customerId,
+      'name': nameController.text,
+      'email': emailController.text,
+      'phone': contactController.text,
+      'profile_image': "",
+      'profile_image_ext': "",
+      'api_mode': 'test',
+    };
 
+    try {
       final response = await http.post(
-        Uri.parse(url),
+        Uri.parse("https://snowplow.celiums.com/api/profile/update"),
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token', // ✅ Add Bearer here too
+          'Authorization': 'Bearer $token',
           'api_mode': 'test',
         },
         body: jsonEncode(body),
       );
 
       if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        if (data['status'] == 'success') {
+        var data = jsonDecode(response.body);
+        if (data['status'] == 1) {
           if (mounted) {
+            setState(() {
+              isEditing = false;
+            });
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(content: Text("Profile updated successfully")),
             );
@@ -164,7 +156,14 @@ class _profileScreenState extends State<profileScreen> {
     }
   }
 
-
+  Future<void> pickImage() async {
+    final pickedFile = await ImagePicker().pickImage(source: ImageSource.gallery);
+    if (pickedFile != null) {
+      setState(() {
+        _image = File(pickedFile.path);
+      });
+    }
+  }
 
   Future<void> deleteCompanyProfile() async {
     if (userId == null) return;
@@ -176,7 +175,7 @@ class _profileScreenState extends State<profileScreen> {
       final response = await http.delete(Uri.parse(url));
       if (response.statusCode == 200) {
         SharedPreferences prefs = await SharedPreferences.getInstance();
-        await prefs.remove("userId"); // Remove stored company ID
+        await prefs.remove("userId");
         Navigator.pushReplacementNamed(context, "/login");
       } else {
         throw Exception("Failed to delete company profile");
@@ -192,25 +191,24 @@ class _profileScreenState extends State<profileScreen> {
     Navigator.pushReplacementNamed(context, "/login");
   }
 
-  // Show confirmation dialog before deleting the profile
   void showDeleteConfirmationDialog() {
     showDialog(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
           backgroundColor: Colors.teal[100],
-          title: Text("Delete Company Profile",style: GoogleFonts.poppins(color: Colors.white,fontWeight: FontWeight.bold)),
+          title: Text("Delete Company Profile", style: GoogleFonts.poppins(color: Colors.white, fontWeight: FontWeight.bold)),
           content: Text("Are you sure you want to delete this profile? This action cannot be undone.",
               style: GoogleFonts.poppins(color: Colors.white)),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(context), // Cancel
-              child: Text("Cancel",style: GoogleFonts.poppins(color: Colors.white),),
+              onPressed: () => Navigator.pop(context),
+              child: Text("Cancel", style: GoogleFonts.poppins(color: Colors.white)),
             ),
             TextButton(
               onPressed: () {
-                Navigator.pop(context); // Close dialog
-                deleteCompanyProfile(); // Delete profile
+                Navigator.pop(context);
+                deleteCompanyProfile();
               },
               child: Text("Delete", style: GoogleFonts.poppins(color: Colors.red)),
             ),
@@ -220,48 +218,16 @@ class _profileScreenState extends State<profileScreen> {
     );
   }
 
-  Future<void> pickImage() async{
-    final pickedFile = await ImagePicker().pickImage(source: ImageSource.gallery);
-    if(pickedFile != null){
-      setState(() {
-        _image = File(pickedFile.path);
-      });
-    }
-  }
-
-  //text fields
-  Widget buildTextField(String label, TextEditingController controller, {bool isEditable = true}) {
-    return TextField(
-      controller: controller,
-      style: GoogleFonts.poppins(),
-      decoration: InputDecoration(
-        labelText: label,
-        labelStyle: GoogleFonts.poppins(),
-        suffixStyle: GoogleFonts.poppins(),
-        suffixIcon: isEditable
-            ? Icon(Icons.edit, color: Colors.grey)
-            : null,
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-      ),
-      enabled: isEditable,
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Colors.teal[100],
-        title: Text("Profile",
-          style: GoogleFonts.poppins(
-              color: Colors.white,
-              fontWeight: FontWeight.bold,
-              fontSize: 30
-          ),
-        ),
+        title: Text("Profile", style: GoogleFonts.poppins(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 30)),
       ),
       body: SingleChildScrollView(
-        child: Padding(padding: EdgeInsets.all(16.0),
+        child: Padding(
+          padding: EdgeInsets.all(16.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
@@ -269,39 +235,74 @@ class _profileScreenState extends State<profileScreen> {
                 onTap: pickImage,
                 child: CircleAvatar(
                   radius: 50,
-                  backgroundImage: AssetImage('assets/profile_placeholder.png'),
+                  backgroundImage: _image != null
+                      ? FileImage(_image!)
+                      : AssetImage('assets/personlogo.jpeg') as ImageProvider,
+                  backgroundColor: Colors.grey[200],
                 ),
               ),
-              SizedBox(height: 20,),
-              buildTextField("Name", nameController),
-              SizedBox(height: 20),
-              buildTextField("Address", addressController),
-              SizedBox(height: 20),
-              buildTextField("contact", contactController),
-              SizedBox(height: 20),
-              buildTextField("Email", TextEditingController(text: email), isEditable: false),
+              SizedBox(height: 16),
+              TextField(
+                controller: nameController,
+                decoration: InputDecoration(labelText: "Name", border: OutlineInputBorder()),
+                style: GoogleFonts.poppins(),
+                readOnly: true,
+              ),
+              SizedBox(height: 16),
+              TextField(
+                controller: contactController,
+                decoration: InputDecoration(labelText: "Contact", border: OutlineInputBorder()),
+                style: GoogleFonts.poppins(),
+                readOnly: true,
+              ),
+              SizedBox(height: 16),
+              TextField(
+                controller: addressController,
+                decoration: InputDecoration(labelText: "Address", border: OutlineInputBorder()),
+                style: GoogleFonts.poppins(),
+                readOnly: true,
+              ),
+              SizedBox(height: 16),
+              TextField(
+                controller: emailController,
+                decoration: InputDecoration(labelText: "Email", border: OutlineInputBorder()),
+                style: GoogleFonts.poppins(),
+                readOnly: true,
+              ),
               SizedBox(height: 30),
-              ElevatedButton(
-                style:ElevatedButton.styleFrom(
-                    backgroundColor: Colors.teal[100],
-                    foregroundColor: Colors.red[300],
-                    minimumSize: Size(double.infinity, 50)
-                ),
-                onPressed: showDeleteConfirmationDialog,
-                child: Text("Delete Profile",style: GoogleFonts.poppins(fontSize: 24,fontWeight: FontWeight.bold),),
-              ),
-              SizedBox(height: 15),
-              ElevatedButton(
-                style:ElevatedButton.styleFrom(
-                    backgroundColor: Colors.teal[100],
-                    foregroundColor: Colors.white,
-                    minimumSize: Size(double.infinity, 50)
-                ),
-                onPressed: updateCompanyProfile,
-                child: Text("Update Profile",style: GoogleFonts.poppins(fontSize: 24,fontWeight: FontWeight.bold),),
-              ),
+              Column(
+                children: [
+                  ElevatedButton(
+                    onPressed: () async {
+                      final updated = await Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => UpdateProfileScreen()),
+                      );
+                      if (updated == true) {
+                        fetchProfileData(); // Refresh on return
+                      }
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.teal[100],
+                      foregroundColor: Colors.white,
+                      minimumSize: Size(double.infinity, 50),
+                    ),
+                    child: Text("Edit Profile", style: GoogleFonts.poppins(fontSize: 22, fontWeight: FontWeight.bold)),
+                  ),
 
-              SizedBox(height: 15),
+                  SizedBox(height: 8),
+                  ElevatedButton(
+                    onPressed: showDeleteConfirmationDialog,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.red[300],
+                      foregroundColor: Colors.white,
+                      minimumSize: Size(double.infinity, 50),
+                    ),
+                    child: Text("Delete Profile", style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.bold)),
+                  ),
+                ],
+              ),
+              SizedBox(height: 8),
               ElevatedButton(
                 onPressed: logoutUser,
                 style: ElevatedButton.styleFrom(
@@ -309,9 +310,8 @@ class _profileScreenState extends State<profileScreen> {
                   foregroundColor: Colors.white,
                   minimumSize: Size(double.infinity, 50),
                 ),
-                child: Text("Logout", style: GoogleFonts.poppins(fontSize: 24,fontWeight: FontWeight.bold)),
+                child: Text("Logout", style: GoogleFonts.poppins(fontSize: 24, fontWeight: FontWeight.bold)),
               ),
-
             ],
           ),
         ),

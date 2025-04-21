@@ -83,7 +83,7 @@ class _BottomNavigationBarState extends State<BottomNavigationBarWidget> {
       homePage(),
       OrderList(),
       userId != null
-          ? profileScreen(userId: userId!)
+          ? ProfileScreen(userId: userId!)
           : const Center(child: CircularProgressIndicator())
     ];
 

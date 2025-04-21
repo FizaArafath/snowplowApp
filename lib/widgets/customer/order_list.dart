@@ -1,259 +1,5 @@
-// import 'dart:convert';
-//
-// import 'package:flutter/material.dart';
-// import 'package:google_fonts/google_fonts.dart';
-// import 'package:http/http.dart' as http;
-// import 'package:shared_preferences/shared_preferences.dart';
-//
-//
-// class orderList extends StatefulWidget {
-//   const orderList({super.key});
-//
-//   @override
-//   State<orderList> createState() => _orderListState();
-// }
-//
-// class _orderListState extends State<orderList> {
-//   final String apiUrl = "https://firestore.googleapis.com/v1/projects/snow-plow-d24c0/databases/(default)/documents/bid_requests";
-//
-//   List<Map<String,dynamic>> requests =[];
-//
-//   @override
-//   void initState() {
-//     super.initState();
-//     fetchRequest();
-//   }
-//
-//
-//
-//   // Future<void> fetchRequest() async {
-//   //   try {
-//   //     SharedPreferences prefs = await SharedPreferences.getInstance();
-//   //     String? userId = prefs.getString("userId");  // Retrieve logged-in user ID
-//   //
-//   //     if (userId == null) {
-//   //       print("⚠️ User ID not found!");
-//   //       return;
-//   //     }
-//   //
-//   //     final response = await http.get(
-//   //       Uri.parse(apiUrl),
-//   //       headers: {"Content-Type": "application/json"},
-//   //     );
-//   //
-//   //     print("Response Code: ${response.statusCode}");
-//   //
-//   //     if (response.statusCode == 200) {
-//   //       final data = jsonDecode(response.body);
-//   //       List<Map<String, dynamic>> loadedRequests = [];
-//   //
-//   //       if (data["documents"] != null) {
-//   //         for (var doc in data["documents"]) {
-//   //           var fields = doc["fields"];
-//   //
-//   //           // Extract request owner's ID from Firestore
-//   //           String? requestOwnerId = fields.containsKey("userId") ? fields["userId"]["stringValue"] : null;
-//   //
-//   //           // 🔥 Only process requests that belong to the logged-in user
-//   //           if (requestOwnerId != null && requestOwnerId == userId) {
-//   //             String? rawStatus = fields.containsKey("status") ? fields["status"]["stringValue"] : null;
-//   //             String status = rawStatus?.trim().toLowerCase() ?? "pending";
-//   //
-//   //             loadedRequests.add({
-//   //               "area": fields.containsKey("area") ? fields["area"]["stringValue"] ?? "Unknown" : "Unknown",
-//   //               "date": fields.containsKey("date") ? fields["date"]["stringValue"] ?? "N/A" : "N/A",
-//   //               "time": fields.containsKey("time") ? fields["time"]["stringValue"] ?? "N/A" : "N/A",
-//   //               "requestType": fields.containsKey("serviceType") ? fields["serviceType"]["stringValue"] ?? "Unknown" : "Unknown",
-//   //               "selectedAgency": fields.containsKey("agency") ? fields["agency"]["stringValue"] ?? "N/A" : "N/A",
-//   //               "status": status,
-//   //             });
-//   //
-//   //             print("✅ Added Request for User ID: $userId -> ${loadedRequests.last}");
-//   //           }
-//   //         }
-//   //       }
-//   //
-//   //       setState(() {
-//   //         requests = loadedRequests;
-//   //       });
-//   //
-//   //       print("🔥 Total Requests for Logged-In User: ${requests.length}");
-//   //     } else {
-//   //       throw Exception("Failed to load requests. Status Code: ${response.statusCode}");
-//   //     }
-//   //   } catch (e) {
-//   //     print("❌ Error fetching requests: $e");
-//   //   }
-//   // }
-//
-//   final String aiUrl = "https://snowplow.celiums.com/api/requests/getrequests"; // your PHP endpoint
-//
-//   Future<void> fetchRequest() async {
-//     try {
-//       SharedPreferences prefs = await SharedPreferences.getInstance();
-//       String? userId = prefs.getString("userId");
-//
-//       if (userId == null) {
-//         print("⚠️ User ID not found!");
-//         return;
-//       }
-//
-//       final response = await http.post(
-//         Uri.parse(apiUrl),
-//         headers: {"Content-Type": "application/json"},
-//         body: jsonEncode({
-//           "customer_id": userId,
-//           "api_mode": "test"
-//         }),
-//       );
-//
-//       print("Response Code: ${response.statusCode}");
-//
-//       if (response.statusCode == 200) {
-//         final data = jsonDecode(response.body);
-//
-//         if (data["status"] == 1 && data["data"] != null) {
-//           List<Map<String, dynamic>> loadedRequests = [];
-//
-//           for (var req in data["data"]) {
-//             String status = (req["status"] ?? "pending").toString().toLowerCase().trim();
-//
-//             loadedRequests.add({
-//               "area": req["service_area"] ?? "Unknown",
-//               "date": req["preferred_date"] ?? "N/A",
-//               "time": req["preferred_time"] ?? "N/A",
-//               "requestType": req["service_type"] ?? "Unknown",
-//               "selectedAgency": req["agency_id"] ?? "N/A",
-//               "status": status,
-//             });
-//           }
-//
-//           setState(() {
-//             requests = loadedRequests;
-//           });
-//
-//           print("✅ Loaded ${requests.length} requests");
-//         } else {
-//           print("⚠️ No request data found");
-//         }
-//       } else {
-//         throw Exception("Failed to load requests. Status Code: ${response.statusCode}");
-//       }
-//     } catch (e) {
-//       print("❌ Error fetching requests: $e");
-//     }
-//   }
-//
-//
-//
-//   @override
-//   Widget build(BuildContext context) {
-//     return DefaultTabController(
-//       length: 3,
-//       child: Scaffold(
-//         appBar: AppBar(
-//           title: Text("Snow Plow Requests",
-//           style: GoogleFonts.poppins(
-//             color: Colors.white,
-//             fontWeight: FontWeight.bold,
-//             fontSize: 20
-//           ),
-//           ),
-//           backgroundColor: Colors.teal[100],
-//           actions: [
-//             IconButton(
-//               icon: Icon(Icons.add),
-//               onPressed: () => Navigator.pushNamed(context, "/request"),
-//             ),
-//           ],
-//           bottom: TabBar(
-//             unselectedLabelStyle: GoogleFonts.poppins(color: Colors.white,fontWeight: FontWeight.bold),
-//               labelStyle: GoogleFonts.poppins(color: Colors.blue,fontWeight: FontWeight.bold),
-//               tabs: [
-//             Tab(text: "Active"),
-//             Tab(text: "Pending"),
-//             Tab(text: "Completed"),
-//           ]),
-//         ),
-//         body: TabBarView(children: [
-//           requestList("Active"),
-//           requestList("Pending"),
-//           requestList("Completed"),
-//
-//         ]),
-//       ),
-//     );
-//   }
-//   Widget requestList(String status) {
-//     List<Map<String, dynamic>> filteredRequest;
-//
-//     if (status == "Active") {
-//       print("🔥 Before Filtering - All Requests: ${requests.map((r) => r["status"])}");
-//
-//       filteredRequest = requests.where((req) {
-//         String requestStatus = req["status"].toString().trim().toLowerCase();
-//         print("🔍 Checking Request: Status = $requestStatus");
-//
-//         return requestStatus == "accepted"; // Ensure proper case handling
-//       }).toList();
-//
-//       print("✅ Filtered Requests for 'Active': ${filteredRequest.length}");
-//
-//     } else {
-//       // Normal filtering for Pending/Completed
-//       filteredRequest = requests.where((req) =>
-//       req["status"].toString().trim().toLowerCase() == status.toLowerCase()
-//       ).toList();
-//     }
-//
-//     print("✅ Final Requests for '$status': ${filteredRequest.length}");
-//
-//
-//
-//
-//     return filteredRequest.isEmpty
-//         ? Center(child: CircularProgressIndicator())
-//         : filteredRequest.isEmpty
-//         ? Center(
-//       child: Text(
-//         "No requests found!",
-//         style: TextStyle(fontSize: 16),
-//       ),
-//     )
-//         : ListView.builder(
-//       itemCount: filteredRequest.length,
-//       itemBuilder: (context, index) {
-//         final request = filteredRequest[index];
-//         return Card(
-//           margin: EdgeInsets.all(10),
-//           shape: RoundedRectangleBorder(
-//             borderRadius: BorderRadius.circular(15),
-//           ),
-//           elevation: 5,
-//           child: ListTile(
-//             title: Text("Area : ${request["area"]} sq ft"),
-//             subtitle: Column(
-//               crossAxisAlignment: CrossAxisAlignment.start,
-//               children: [
-//                 Text("Date: ${request["date"]}"),
-//                 Text("Time: ${request["time"]}"),
-//                 Text("Type: ${request["requestType"]}"),
-//                 if (request["requestType"] == "Direct")
-//                   Text("Agency: ${request["selectedAgency"]}"),
-//                 Text("Status: ${request["status"]}", style: TextStyle(fontWeight: FontWeight.bold)),
-//               ],
-//             ),
-//             trailing: Icon(Icons.snowing),
-//           ),
-//         );
-//       },
-//     );
-//   }
-//
-// }
-
-
 import 'dart:convert';
+import 'package:intl/intl.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
@@ -266,42 +12,141 @@ class OrderList extends StatefulWidget {
   State<OrderList> createState() => _OrderListState();
 }
 
-class _OrderListState extends State<OrderList> {
-  final String requestApiUrl = "https://snowplow.celiums.com/api/requests/list";
-  final String bidListApiUrl = "https://snowplow.celiums.com/api/bids/list";
-  final String bidDeleteApiUrl = "https://snowplow.celiums.com/api/bids/delete";
+class _OrderListState extends State<OrderList> with TickerProviderStateMixin {
+  final String apiUrl = "https://snowplow.celiums.com/api/requests/list";
+  final String bidApiUrl = "https://snowplow.celiums.com/api/bids/list";
 
   List<Map<String, dynamic>> requests = [];
-  List<Map<String, dynamic>> bids = [];
-  bool isRequestLoading = true;
-  bool isBidLoading = true;
+  List<Map<String, dynamic>> bidRequests = [];
+
+  bool isLoadingRequests = false;
+  bool isLoadingBids = false;
+
+  late TabController _tabController;
 
   @override
   void initState() {
     super.initState();
-    fetchRequests();
-    fetchBids();
+
+    _tabController = TabController(length: 2, vsync: this); // ✅ FIXED HERE
+    _tabController.addListener(() {
+      if (_tabController.indexIsChanging) return;
+      if (_tabController.index == 1) {
+        fetchBidRequests();
+      }
+    });
+
+    fetchRequest();
   }
 
-  Future<void> fetchRequests() async {
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
+
+  //fetch request list
+  // Future<void> fetchRequest() async {
+  //   if (!mounted) return;
+  //   setState(() {
+  //     isLoadingRequests = true;
+  //   });
+  //
+  //   try {
+  //     SharedPreferences prefs = await SharedPreferences.getInstance();
+  //     String? userId = prefs.getString("userId");
+  //
+  //     if (userId == null) return;
+  //
+  //     final response = await http.post(
+  //       Uri.parse(apiUrl),
+  //       headers: {"Content-Type": "application/json"},
+  //       body: jsonEncode({
+  //         "agency_id": userId,
+  //         "customer_id": "24",
+  //         "per_page": "10",
+  //         "page": "0",
+  //         "api_mode": "test"
+  //       }),
+  //     );
+  //
+  //     if (response.statusCode == 200) {
+  //       final data = jsonDecode(response.body);
+  //       if (data["status"] == 1 && data["data"] != null) {
+  //         List<Map<String, dynamic>> loadedRequests = [];
+  //
+  //         for (var req in data["data"]) {
+  //           String status = (req["status"] ?? "0").toString().trim();
+  //
+  //           String date = "N/A";
+  //           try {
+  //             final rawDate = req["preferred_date"];
+  //             if (rawDate != null && rawDate != "") {
+  //               date = DateFormat("yyyy-MM-dd").format(DateTime.parse(rawDate));
+  //             }
+  //           } catch (_) {}
+  //
+  //           String time = "N/A";
+  //           try {
+  //             final rawTime = req["preferred_time"];
+  //             if (rawTime != null && rawTime.contains(":")) {
+  //               List<String> timeParts = rawTime.split(':');
+  //               time = "${timeParts[0]}:${timeParts[1]}";
+  //             }
+  //           } catch (_) {}
+  //
+  //           loadedRequests.add({
+  //             "request_id": req["request_id"]?.toString() ?? "",
+  //             "service_area": req["service_area"]?.toString() ?? "Unknown",
+  //             "preferred_date": date,
+  //             "preferred_time": time,
+  //             "requestType": "Direct",
+  //             "selectedAgency": req["agency_id"]?.toString() ?? "N/A",
+  //             "status": status,
+  //             "service_street": req["service_street"]?.toString() ?? "",
+  //             "service_type": req["service_type"]?.toString() ?? "",
+  //             "created": req["created"]?.toString() ?? "",
+  //           });
+  //         }
+  //
+  //         if (!mounted) return;
+  //         setState(() {
+  //           requests = loadedRequests;
+  //         });
+  //       }
+  //     }
+  //   } catch (e) {
+  //     print("❌ Error fetching requests: $e");
+  //   }
+  //
+  //   if (!mounted) return;
+  //   setState(() {
+  //     isLoadingRequests = false;
+  //   });
+  // }
+
+
+
+  Future<void> fetchRequest() async {
+    if (!mounted) return;
+
+    setState(() {
+      isLoadingRequests = true;
+    });
+
     try {
       SharedPreferences prefs = await SharedPreferences.getInstance();
-      String? customerId = prefs.getString("userId");
-      String? agencyId;
+      String? userId = prefs.getString("userId");
 
-      if (customerId == null) {
-        print("⚠️ User ID not found!");
-        return;
-      }
+      if (userId == null) return;
 
       final response = await http.post(
-        Uri.parse(requestApiUrl),
-        headers: {
-          "Content-Type": "application/json"
-        },
+        Uri.parse(apiUrl),
+        headers: {"Content-Type": "application/json"},
         body: jsonEncode({
-          "customer_id": customerId,
-          "agency_id": agencyId,
+          "agency_id": userId,
+          "customer_id": "24",
           "per_page": "10",
           "page": "0",
           "api_mode": "test"
@@ -310,60 +155,75 @@ class _OrderListState extends State<OrderList> {
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        print("heii:${response.statusCode}");
-        print(response.body);
 
         if (data["status"] == 1 && data["data"] != null) {
           List<Map<String, dynamic>> loadedRequests = [];
 
           for (var req in data["data"]) {
-            String status = (req["status"] ?? "pending").toString().toLowerCase().trim();
+            String date = "N/A";
+            try {
+              final rawDate = req["preferred_date"];
+              if (rawDate != null && rawDate != "") {
+                date = DateFormat("yyyy-MM-dd").format(DateTime.parse(rawDate));
+              }
+            } catch (_) {}
+
+            String time = "N/A";
+            try {
+              final rawTime = req["preferred_time"];
+              if (rawTime != null && rawTime.contains(":")) {
+                List<String> timeParts = rawTime.split(':');
+                time = "${timeParts[0]}:${timeParts[1]}";
+              }
+            } catch (_) {}
 
             loadedRequests.add({
-              "area": req["service_area"] ?? "Unknown",
-              "date": req["preferred_date"] ?? "N/A",
-              "time": req["preferred_time"] ?? "N/A",
-              "requestType": req["service_type"] ?? "Unknown",
-              "selectedAgency": req["agency_id"] ?? "N/A",
-              "status": (req["status"] ?? "pending").toString().toLowerCase().trim(),
+              "request_id": req["request_id"]?.toString() ?? "",
+              "service_area": req["service_area"]?.toString() ?? "Unknown",
+              "preferred_date": date,
+              "preferred_time": time,
+              "requestType": "Direct",
+              "selectedAgency": req["agency_id"]?.toString() ?? "N/A",
+              "status": req["status"]?.toString() ?? "0",
+              "service_type": req["service_type"]?.toString() ?? "",
+              "created": req["created"]?.toString() ?? "",
+              "image": req["image"]?.toString() ?? "",
             });
-
           }
 
+          if (!mounted) return;
           setState(() {
-            isRequestLoading = false;
             requests = loadedRequests;
           });
         }
-        // else {
-        //   setState(() {
-        //     isRequestLoading = false;
-        //     requests = [];
-        //   });
-        // }
-      } else {
-        throw Exception("Failed to load requests. Status Code: ${response.statusCode}");
       }
     } catch (e) {
       print("❌ Error fetching requests: $e");
-      setState(() {
-        isRequestLoading = false;
-      });
     }
+
+    if (!mounted) return;
+    setState(() {
+      isLoadingRequests = false;
+    });
   }
 
-  Future<void> fetchBids() async {
+
+
+//fetch bid request list
+  Future<void> fetchBidRequests() async {
+    if (!mounted) return;
+    setState(() {
+      isLoadingBids = true;
+    });
+
     try {
       SharedPreferences prefs = await SharedPreferences.getInstance();
       String? userId = prefs.getString("userId");
 
-      if (userId == null) {
-        print("⚠️ User ID not found!");
-        return;
-      }
+      if (userId == null) return;
 
       final response = await http.post(
-        Uri.parse(bidListApiUrl),
+        Uri.parse(bidApiUrl),
         headers: {"Content-Type": "application/json"},
         body: jsonEncode({
           "customer_id": userId,
@@ -374,80 +234,39 @@ class _OrderListState extends State<OrderList> {
       );
 
       if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        print("hello:${response.statusCode}");
-        print(response.body);
-
+        final data = jsonDecode("responseBody:${response.body}");
         if (data["status"] == 1 && data["data"] != null) {
-          setState(() {
-            isBidLoading = false;
-            bids = List<Map<String, dynamic>>.from(data["data"]);
-          });
-          print("bids:$bids");
-        } else {
-          setState(() {
-            isBidLoading = false;
-            bids = [];
-          });
-        }
-      } else {
-        throw Exception("Failed to load bids. Status Code: ${response.statusCode}");
-      }
-    } catch (e) {
-      print("❌ Error fetching bids: $e");
-      setState(() {
-        isBidLoading = false;
-      });
-    }
-  }
+          List<Map<String, dynamic>> loadedBids = [];
 
-  Future<void> deleteBid(String requestId) async {
-    try {
-      final response = await http.post(
-        Uri.parse(bidDeleteApiUrl),
-        headers: {"Content-Type": "application/json"},
-        body: jsonEncode({
-          "request_id": requestId,
-          "api_mode": "test"}),
-      );
-print(requestId);
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        if (data["status"] == 1) {
-          ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text("Bid deleted successfully.")));
-          fetchBids();
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text("Failed to delete bid.")));
+          for (var item in data["data"]) {
+            loadedBids.add({
+              "bid_request_id": item["id"]?.toString() ?? "",
+              "service_type": item["service_type"]?.toString() ?? "",
+              "service_street": item["service_street"]?.toString() ?? "",
+              "service_area": item["service_area"]?.toString() ?? "",
+              "preferred_date": item["preferred_date"]?.toString() ?? "",
+              "preferred_time": item["preferred_time"]?.toString() ?? "",
+              "urgency_level": item["urgency_level"]?.toString() ?? "",
+              "created": item["created"]?.toString() ?? "",
+              "status": item["status"]?.toString() ?? "0",
+            });
+          }
+          print("loaded:$loadedBids");
+
+          if (!mounted) return;
+          setState(() {
+            bidRequests = loadedBids;
+          });
         }
       }
     } catch (e) {
-      print("❌ Error deleting bid: $e");
+      print("❌ Error fetching bid requests: $e");
     }
-  }
 
-  void confirmDelete(String requestId) {
-    showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: Text("Delete Bid"),
-        content: Text("Are you sure you want to delete this bid?"),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text("Cancel"),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              deleteBid(requestId);
-            },
-            child: Text("Delete", style: TextStyle(color: Colors.red)),
-          ),
-        ],
-      ),
-    );
+    if (!mounted) return;
+    setState(() {
+      isLoadingBids = false;
+    });
   }
 
   @override
@@ -456,103 +275,396 @@ print(requestId);
       length: 2,
       child: Scaffold(
         appBar: AppBar(
-          title: Text("Snow Plow",
-              style: GoogleFonts.poppins(
-                  color: Colors.white, fontWeight: FontWeight.bold, fontSize: 20)),
+          title: Text("Snow Plow Requests",
+              style: GoogleFonts.poppins(fontWeight: FontWeight.bold)),
           backgroundColor: Colors.teal[100],
-            actions: [
+          actions: [
             IconButton(
               icon: Icon(Icons.add),
               onPressed: () => Navigator.pushNamed(context, "/request"),
             ),
           ],
           bottom: TabBar(
-            unselectedLabelStyle: GoogleFonts.poppins(
-                color: Colors.white, fontWeight: FontWeight.bold),
-            labelStyle: GoogleFonts.poppins(
-                color: Colors.blue, fontWeight: FontWeight.bold),
-            tabs: const [
-              Tab(text: "Requests"),
+            tabs: [
+              Tab(text: "Direct Requests"),
               Tab(text: "Bid Requests"),
             ],
           ),
         ),
         body: TabBarView(
           children: [
-            buildRequestList(),
-            buildBidList(),
+            buildRequestList(requests, isLoadingRequests),
+            buildBidRequestList(bidRequests, isLoadingBids),
           ],
         ),
       ),
     );
   }
 
-  Widget buildRequestList() {
-    return requests.isEmpty
-        ? Center(child: CircularProgressIndicator())
-        : ListView.builder(
-        itemCount: requests.length,
-        itemBuilder: (context, index) {
-          final request = requests[index];
-          return Card(
-            margin: EdgeInsets.all(10),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(15),
-            ),
-            elevation: 5,
-            child: ListTile(
-              title: Text("Area : ${request["area"]} sq ft"),
-              subtitle: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text("Date: ${request["date"]}"),
-                  Text("Time: ${request["time"]}"),
-                  Text("Type: ${request["requestType"]}"),
-                  if (request["requestType"] == "Direct")
-                    Text("Agency: ${request["selectedAgency"]}"),
-                  Text("Status: ${request["status"]}",
-                      style: TextStyle(fontWeight: FontWeight.bold)),
-                ],
-              ),
-              trailing: Icon(Icons.snowing),
-            ),
-          );
-        });
-  }
+  // Widget buildRequestList(List<Map<String, dynamic>> list, bool isLoading) {
+  //   if (isLoading) {
+  //     return Center(child: CircularProgressIndicator());
+  //   }
+  //
+  //   if (list.isEmpty) {
+  //     return Center(
+  //       child: Text(
+  //         "No requests found!",
+  //         style: GoogleFonts.poppins(fontSize: 16, color: Colors.grey[600]),
+  //       ),
+  //     );
+  //   }
+  //
+  //   return ListView.builder(
+  //     itemCount: list.length,
+  //     itemBuilder: (context, index) {
+  //       final request = list[index];
+  //       return InkWell(
+  //         onTap: () {
+  //           // Navigator.push(
+  //           //   context,
+  //           //   MaterialPageRoute(
+  //           //     builder: (context) => RequestDetailScreen(requestData: request),
+  //           //   ),
+  //           // );
+  //         },
+  //         child: Card(
+  //           margin: EdgeInsets.symmetric(horizontal: 15, vertical: 8),
+  //           elevation: 3,
+  //           shape:
+  //               RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+  //           child: Padding(
+  //             padding: EdgeInsets.all(15),
+  //             child: Column(
+  //               crossAxisAlignment: CrossAxisAlignment.start,
+  //               children: [
+  //                 Row(
+  //                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
+  //                     children: [
+  //                       Text("Service: ${request["service_type"]}",
+  //                           style: GoogleFonts.poppins(
+  //                               fontWeight: FontWeight.w500)),
+  //                       Container(
+  //                         padding:
+  //                             EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+  //                         decoration: BoxDecoration(
+  //                           color: Colors.teal[50],
+  //                           borderRadius: BorderRadius.circular(20),
+  //                         ),
+  //                         child: Text(
+  //                           request["status"] == "0"
+  //                               ? "PENDING"
+  //                               : request["status"] == "1"
+  //                                   ? "ACCEPTED"
+  //                                   : request["status"] == "2"
+  //                                       ? "COMPLETED"
+  //                                       : "UNKNOWN",
+  //                           style: GoogleFonts.poppins(
+  //                               fontSize: 12,
+  //                               fontWeight: FontWeight.w500,
+  //                               color: Colors.teal),
+  //                         ),
+  //                       ),
+  //                     ]),
+  //                 SizedBox(height: 8),
+  //                 if (request["service_street"] != null)
+  //                   Row(children: [
+  //                     Icon(Icons.location_on_outlined, size: 16),
+  //                     SizedBox(width: 8),
+  //                     Expanded(
+  //                         child: Text(request["service_street"],
+  //                             style: GoogleFonts.poppins())),
+  //                   ]),
+  //                 SizedBox(height: 8),
+  //                 Row(children: [
+  //                   Icon(Icons.map_outlined, size: 16),
+  //                   SizedBox(width: 8),
+  //                   Text("Area: ${request["service_area"] ?? "Unknown"}",
+  //                       style: GoogleFonts.poppins()),
+  //                 ]),
+  //                 SizedBox(height: 8),
+  //                 Row(children: [
+  //                   Icon(Icons.calendar_today_outlined, size: 16),
+  //                   SizedBox(width: 8),
+  //                   Text("Date: ${request["preferred_date"] ?? "N/A"}",
+  //                       style: GoogleFonts.poppins()),
+  //                 ]),
+  //                 SizedBox(height: 8),
+  //                 Row(children: [
+  //                   Icon(Icons.access_time_outlined, size: 16),
+  //                   SizedBox(width: 8),
+  //                   Text("Time: ${request["preferred_time"] ?? "N/A"}",
+  //                       style: GoogleFonts.poppins()),
+  //                 ]),
+  //                 if (request["urgency_level"] != null &&
+  //                     request["urgency_level"].toString().isNotEmpty)
+  //                   Padding(
+  //                     padding: const EdgeInsets.only(top: 8.0),
+  //                     child: Row(children: [
+  //                       Icon(Icons.speed_outlined, size: 16),
+  //                       SizedBox(width: 8),
+  //                       Text("Urgency: ${request["urgency_level"]}",
+  //                           style: GoogleFonts.poppins()),
+  //                     ]),
+  //                   ),
+  //                 SizedBox(height: 8),
+  //                 Row(children: [
+  //                   Icon(Icons.schedule_outlined, size: 16),
+  //                   SizedBox(width: 8),
+  //                   Text("Created: ${request["created"] ?? "N/A"}",
+  //                       style: GoogleFonts.poppins()),
+  //                 ]),
+  //               ],
+  //             ),
+  //           ),
+  //         ),
+  //       );
+  //     },
+  //   );
+  // }
 
-  Widget buildBidList() {
-    if (isBidLoading) {
+
+
+  Widget buildRequestList(List<Map<String, dynamic>> list, bool isLoading) {
+    if (isLoading) {
       return Center(child: CircularProgressIndicator());
     }
-    if (bids.isEmpty) {
-      return Center(child: Text("No bids found."));
+
+    if (list.isEmpty) {
+      return Center(
+        child: Text(
+          "No requests found!",
+          style: GoogleFonts.poppins(fontSize: 16, color: Colors.grey[600]),
+        ),
+      );
     }
 
     return ListView.builder(
-      itemCount: bids.length,
+      itemCount: list.length,
       itemBuilder: (context, index) {
-        final bid = bids[index];
-        return Card(
-          margin: EdgeInsets.all(10),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(15),
+        final request = list[index];
+        return InkWell(
+          onTap: () {
+            // You can enable this if navigation is required
+            // Navigator.push(
+            //   context,
+            //   MaterialPageRoute(
+            //     builder: (context) => RequestDetailScreen(requestData: request),
+            //   ),
+            // );
+          },
+          child: Card(
+            margin: EdgeInsets.symmetric(horizontal: 15, vertical: 8),
+            elevation: 3,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+            child: Padding(
+              padding: EdgeInsets.all(15),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text("Service: ${request["service_type"]}",
+                          style: GoogleFonts.poppins(fontWeight: FontWeight.w500)),
+                      Container(
+                        padding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.teal[50],
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Text(
+                          request["status"] == "0"
+                              ? "PENDING"
+                              : request["status"] == "1"
+                              ? "ACCEPTED"
+                              : request["status"] == "2"
+                              ? "COMPLETED"
+                              : "UNKNOWN",
+                          style: GoogleFonts.poppins(
+                              fontSize: 12, fontWeight: FontWeight.w500, color: Colors.teal),
+                        ),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Icon(Icons.map_outlined, size: 16),
+                      SizedBox(width: 8),
+                      Text("Area: ${request["service_area"] ?? "Unknown"}",
+                          style: GoogleFonts.poppins()),
+                    ],
+                  ),
+                  SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Icon(Icons.calendar_today_outlined, size: 16),
+                      SizedBox(width: 8),
+                      Text("Date: ${request["preferred_date"] ?? "N/A"}",
+                          style: GoogleFonts.poppins()),
+                    ],
+                  ),
+                  SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Icon(Icons.access_time_outlined, size: 16),
+                      SizedBox(width: 8),
+                      Text("Time: ${request["preferred_time"] ?? "N/A"}",
+                          style: GoogleFonts.poppins()),
+                    ],
+                  ),
+                  SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Icon(Icons.schedule_outlined, size: 16),
+                      SizedBox(width: 8),
+                      Text("Created: ${request["created"] ?? "N/A"}",
+                          style: GoogleFonts.poppins()),
+                    ],
+                  ),
+                  if (request["image"] != null && request["image"].toString().isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 10.0),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
+                        child: Image.network(
+                          "https://snowplow.celiums.com/uploads/${request["image"]}",
+                          height: 150,
+                          width: double.infinity,
+                          fit: BoxFit.cover,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
           ),
-          elevation: 5,
-          child: ListTile(
-            title: Text("Bid ID: ${bid["bid_request_id"] ?? "N/A"}"),
-            subtitle: Column(
+        );
+      },
+    );
+  }
+
+
+
+  Widget buildBidRequestList(
+      List<Map<String, dynamic>> bidRequests, bool isLoading) {
+    if (isLoading) {
+      return Center(child: CircularProgressIndicator());
+    }
+
+    if (bidRequests.isEmpty) {
+      return Center(
+        child: Text(
+          "No bid requests found!",
+          style: GoogleFonts.poppins(fontSize: 16, color: Colors.grey[600]),
+        ),
+      );
+    }
+
+    return ListView.builder(
+      itemCount: bidRequests.length,
+      itemBuilder: (context, index) {
+        final bid = bidRequests[index];
+        // Format date and time
+        String formattedDate = 'N/A';
+        String formattedTime = 'N/A';
+        try {
+          final rawDate = bid["preferred_date"];
+          if (rawDate != null && rawDate != "") {
+            formattedDate = DateFormat("yyyy-MM-dd").format(DateTime.parse(rawDate));
+          }
+        } catch (_) {}
+        try {
+          final rawTime = bid["preferred_time"];
+          if (rawTime != null && rawTime.contains(":")) {
+            List<String> timeParts = rawTime.split(":");
+            formattedTime = "${timeParts[0]}:${timeParts[1]}";
+          }
+        } catch (_) {}
+        return Card(
+          margin: EdgeInsets.symmetric(horizontal: 15, vertical: 8),
+          elevation: 3,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+          child: Padding(
+            padding: EdgeInsets.all(15),
+            child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text("Address: ${bid["service_street"] ?? "N/A"}"),
-                Text("city: ${bid[" service_city"] ?? "None"}"),
-                Text("Agency ID: ${bid["agency_id"] ?? "N/A"}"),
+                Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text("Service: "+(bid["service_type"]?.toString() ?? "Unknown"),
+                          style: GoogleFonts.poppins(fontWeight: FontWeight.w500)),
+                      Container(
+                        padding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.blue[50],
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Text(
+                          bid["status"] == "0"
+                              ? "PENDING"
+                              : bid["status"] == "1"
+                                  ? "ACCEPTED"
+                                  : bid["status"] == "2"
+                                      ? "COMPLETED"
+                                      : "UNKNOWN",
+                          style: GoogleFonts.poppins(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                              color: Colors.blue),
+                        ),
+                      ),
+                    ]),
+                SizedBox(height: 8),
+                if (bid["service_street"] != null && bid["service_street"].toString().isNotEmpty)
+                  Row(children: [
+                    Icon(Icons.location_on_outlined, size: 16),
+                    SizedBox(width: 8),
+                    Expanded(
+                        child: Text(bid["service_street"].toString(),
+                            style: GoogleFonts.poppins())),
+                  ]),
+                SizedBox(height: 8),
+                Row(children: [
+                  Icon(Icons.map_outlined, size: 16),
+                  SizedBox(width: 8),
+                  Text("Area: "+(bid["service_area"]?.toString() ?? "Unknown"),
+                      style: GoogleFonts.poppins()),
+                ]),
+                SizedBox(height: 8),
+                Row(children: [
+                  Icon(Icons.calendar_today_outlined, size: 16),
+                  SizedBox(width: 8),
+                  Text("Date: $formattedDate",
+                      style: GoogleFonts.poppins()),
+                ]),
+                SizedBox(height: 8),
+                Row(children: [
+                  Icon(Icons.access_time_outlined, size: 16),
+                  SizedBox(width: 8),
+                  Text("Time: $formattedTime",
+                      style: GoogleFonts.poppins()),
+                ]),
+                if (bid["urgency_level"] != null && bid["urgency_level"].toString().isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8.0),
+                    child: Row(children: [
+                      Icon(Icons.speed_outlined, size: 16),
+                      SizedBox(width: 8),
+                      Text("Urgency: "+(bid["urgency_level"]?.toString() ?? "N/A"),
+                          style: GoogleFonts.poppins()),
+                    ]),
+                  ),
+                SizedBox(height: 8),
+                Row(children: [
+                  Icon(Icons.schedule_outlined, size: 16),
+                  SizedBox(width: 8),
+                  Text("Created: "+(bid["created"]?.toString() ?? "N/A"),
+                      style: GoogleFonts.poppins()),
+                ]),
               ],
-            ),
-            trailing: IconButton(
-              icon: Icon(Icons.delete, color: Colors.red),
-              onPressed: () {
-                confirmDelete(bid["bid_request_id"].toString());
-              },
             ),
           ),
         );

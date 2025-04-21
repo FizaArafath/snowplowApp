@@ -10,7 +10,6 @@ import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
 
 import '../../services/agency_services.dart';
-import 'order_list.dart';
 
 class BidRequestForm extends StatefulWidget {
   const BidRequestForm({super.key});
@@ -23,13 +22,15 @@ class _BidRequestFormState extends State<BidRequestForm> {
   final _formkey = GlobalKey<FormState>();
   final TextEditingController _areaController = TextEditingController();
   final TextEditingController _locationController = TextEditingController();
-  String? _selectedService; // This will be used for both service selection and API
-  String? _selectedOptions = "Bid";
-  String? _selectedAgency;
+  // final TextEditingController _locationController = TextEditingController();
+  String? _selectedServiceType;
+
   DateTime? _selectedDate;
   TimeOfDay? _selectedTime;
   List<File> _selectedImages = [];
   final picker = ImagePicker();
+  String? _selectedOptions = "Bid";
+  String? _selectedAgency;
   String? _selectedAddress;
   List<String> _previousAddresses = [];
   String _currentAddress = "Fetching location...";
@@ -45,6 +46,8 @@ class _BidRequestFormState extends State<BidRequestForm> {
 
   List<Agency> _agencies = [];
 
+  String? _selectedService;
+  //String? _selectedServiceType; // Add this field to track service type
   List<Map<String, dynamic>> agencies = [];
 
   //service-type list
@@ -74,7 +77,9 @@ class _BidRequestFormState extends State<BidRequestForm> {
           final List<dynamic> serviceList = responseData['data'];
 
           setState(() {
-            _services = serviceList.map((service) => service['service_type'].toString()).toList();
+            _services = serviceList
+                .map((service) => service['service_type'].toString())
+                .toList();
           });
 
           print("Loaded services: $_services");
@@ -93,60 +98,53 @@ class _BidRequestFormState extends State<BidRequestForm> {
     }
   }
 
-
-
-  Future<void> _fetchAgencies()async{
+  Future<void> _fetchAgencies() async {
     setState(() {
       _isLoading = true;
     });
 
-    try{
+    try {
       final response = await http.post(
         Uri.parse("https://snowplow.celiums.com/api/agencies/list"),
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
-
         },
-        body: jsonEncode(
-            {
-              "per_page": "10",
-              "page": "0",
-              "api_mode": "test",
-            }
-        ),
+        body: jsonEncode({
+          "per_page": "10",
+          "page": "0",
+          "api_mode": "test",
+        }),
       );
-      if(response.statusCode == 200){
-        final Map<String,dynamic> responseData = jsonDecode(response.body);
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> responseData = jsonDecode(response.body);
 
-        if(responseData['status'] == 1 &&  responseData['data']!= null){
+        if (responseData['status'] == 1 && responseData['data'] != null) {
           final List<dynamic> agencyList = responseData['data'];
           print(responseData);
           print(response.body);
           setState(() {
-            _agencies = agencyList.map((agency) => Agency(
-              id: agency['agency_id'].toString(),
-              name: agency['agency_name'].toString(),
-              rating: double.tryParse(agency['rating'].toString()) ?? 0.0,
-              email: agency['agency_email'].toString(),
-              uid: agency['uid'].toString(),
-            )).toList();
+            _agencies = agencyList
+                .map((agency) => Agency(
+                      id: agency['agency_id'].toString(),
+                      name: agency['agency_name'].toString(),
+                      rating:
+                          double.tryParse(agency['rating'].toString()) ?? 0.0,
+                      email: agency['agency_email'].toString(),
+                      uid: agency['uid'].toString(),
+                    ))
+                .toList();
           });
           print("Loaded agencies: ${_agencies.length}");
-        }
-        else{
+        } else {
           print("Invalid response format or no data.");
-
         }
-      }
-
-      else{
+      } else {
         print("Failed to load agencies. Status: ${response.statusCode}");
       }
-    }catch(e){
+    } catch (e) {
       print("Error fetching agencies: $e");
-    }
-    finally{
+    } finally {
       setState(() {
         _isLoading = false;
       });
@@ -298,17 +296,28 @@ class _BidRequestFormState extends State<BidRequestForm> {
     }
   }
 
-
-
-
   void _submitForm() async {
     print("Submit button pressed");
 
     if (_formkey.currentState!.validate()) {
       print("Form validation passed");
-      
-      // Check for service
-      if (_selectedService == null) {
+
+      // Show loading indicator
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (BuildContext context) {
+          return Center(
+            child: CircularProgressIndicator(
+              valueColor: AlwaysStoppedAnimation<Color>(Colors.teal),
+            ),
+          );
+        },
+      );
+
+      // Check for service type
+      if (_selectedServiceType == null) {
+        Navigator.pop(context); // Dismiss loading indicator
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text("Please select a service type")),
         );
@@ -317,15 +326,15 @@ class _BidRequestFormState extends State<BidRequestForm> {
 
       // Check for valid date and time selection
       if (_selectedDate == null || _selectedTime == null) {
+        Navigator.pop(context); // Dismiss loading indicator
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Please select both date and time")),
+          SnackBar(
+            content: Text("Please select both date and time"),
+            backgroundColor: Colors.teal[200],
+          ),
         );
         return;
       }
-
-      // Format date and time properly
-      final formattedTime = "${_selectedTime!.hour.toString().padLeft(2, '0')}:${_selectedTime!.minute.toString().padLeft(2, '0')}:00";
-      final formattedDate = DateFormat("yyyy-MM-dd").format(_selectedDate!);
 
       // Get userId from SharedPreferences
       SharedPreferences prefs = await SharedPreferences.getInstance();
@@ -333,6 +342,7 @@ class _BidRequestFormState extends State<BidRequestForm> {
       print("User ID: $userId");
 
       if (userId == null) {
+        Navigator.pop(context); // Dismiss loading indicator
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text("User not authenticated")),
         );
@@ -341,6 +351,7 @@ class _BidRequestFormState extends State<BidRequestForm> {
 
       // Check if latitude and longitude are provided
       if (_latitude == null || _longitude == null) {
+        Navigator.pop(context); // Dismiss loading indicator
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text("Please provide a valid location")),
         );
@@ -355,7 +366,33 @@ class _BidRequestFormState extends State<BidRequestForm> {
         base64Images.add(base64Image);
       }
 
+      // Format date and time properly
+      String formattedDate = "${_selectedTime!.hour.toString().padLeft(2, '0')}:${_selectedTime!.minute.toString().padLeft(2, '0')}";
+      String formattedTime = "${_selectedDate!.year}-${_selectedDate!.month.toString().padLeft(2, '0')}-${_selectedDate!.day.toString().padLeft(2, '0')} ${_selectedTime!.hour.toString().padLeft(2, '0')}:${_selectedTime!.minute.toString().padLeft(2, '0')}:00";
 
+      print("🕒 Selected Date Object: $_selectedDate");
+      print("🕒 Selected Time Object: $_selectedTime");
+      print("🕒 Formatted Date: $formattedDate");
+      print("🕒 Formatted Time: $formattedTime");
+
+      Map<String, dynamic> requestBody = {
+        "agency_id": _selectedAgency ?? "",
+        "comments": _areaController.text,
+        "service_type": _selectedServiceType,
+        "service_area": _areaController.text,
+        "service_city": _currentAddress,
+        "service_latitude": _latitude?.toString() ?? "",
+        "service_longitude": _longitude?.toString() ?? "",
+        "urgency_level": selectedUrgency,
+        "image": base64Images.join(","),
+        "preferred_time": formattedTime,
+        "service_street": _areaController.text,
+        "preferred_date": formattedDate,
+        "customer_id": userId,
+        "api_mode": "test",
+      };
+
+      print("📤 Request Body: ${jsonEncode(requestBody)}");
 
       try {
         if (_selectedOptions == "Bid") {
@@ -366,144 +403,146 @@ class _BidRequestFormState extends State<BidRequestForm> {
               "Content-Type": "application/json",
               "Accept": "application/json",
             },
-            body: jsonEncode({
-              "agency_id": _selectedAgency ?? "",
-              "comments": _areaController.text,
-              "service_type": _selectedService,
-              "service_area": _areaController.text,
-              "service_city": _currentAddress,
-              "service_latitude": _latitude?.toString() ?? "",
-              "service_longitude": _longitude?.toString() ?? "",
-              "urgency_level": selectedUrgency,
-              "image": base64Images.join(","),
-              "preferred_time": formattedTime,
-              "service_street": _areaController.text,
-              "preferred_date": formattedDate,
-              "customer_id": userId,
-              "api_mode": "test",
-            }),
+            body: jsonEncode(requestBody),
           );
-          print("Response Body (Raw): ${response.body}");
+          print("📥 Response Status Code: ${response.statusCode}");
+          print("📥 Response Body (Raw): ${response.body}");
 
           if (response.statusCode == 200 || response.statusCode == 201) {
             try {
               var jsonResponse = jsonDecode(response.body);
-              print("Response Body (JSON): $jsonResponse");
+              print("📥 Response Body (JSON): $jsonResponse");
 
-              String message = jsonResponse['message'] ?? "Bid request sent successfully!";
+              // Dismiss loading indicator
+              Navigator.pop(context);
+
+              String message =
+                  jsonResponse['message'] ?? "Bid request sent successfully!";
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text(message)),
+                SnackBar(
+                  content: Text(message),
+                  backgroundColor: Colors.teal[200],
+                ),
               );
-            } catch (e) {
 
-              // Catch error while decoding JSON
-              print("Error parsing JSON: $e");
+              // Clear form after successful submission
+              setState(() {
+                _areaController.clear();
+                _locationController.clear();
+                _selectedServiceType = null;
+                _selectedDate = null;
+                _selectedTime = null;
+                _selectedImages = [];
+                _selectedAgency = null;
+                selectedUrgency = null;
+              });
+
+              // Navigate back to previous screen
+              Navigator.pop(context);
+            } catch (e) {
+              // Dismiss loading indicator
+              Navigator.pop(context);
+              print("❌ Error parsing response: $e");
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text("Bid request sent successfully!")),
+                SnackBar(
+                  content: Text("Error processing server response"),
+                  backgroundColor: Colors.red,
+                ),
               );
             }
-            Navigator.push(context, MaterialPageRoute(builder: (context)=>OrderList()));
           } else {
-            print("Bid API Error Status Code: ${response.statusCode}");
-            print("Bid API Error Body: ${response.body}");
-
-            try {
-              var errorResponse = jsonDecode(response.body);
-              String errorMessage = errorResponse['message'] ?? "Bid request failed with status ${response.statusCode}";
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text(errorMessage)),
-              );
-            } catch (e) {
-              print("Error parsing error response: $e");
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text("Bid request failed: ${response.statusCode} - ${response.body}")),
-              );
-            }
-            throw Exception("Bid API returned ${response.statusCode}");
+            // Dismiss loading indicator
+            Navigator.pop(context);
+            print("❌ Error response: ${response.statusCode} - ${response.body}");
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text("Failed to submit request"),
+                backgroundColor: Colors.red,
+              ),
+            );
           }
         } else {
           // DIRECT REQUEST
           final response = await http.post(
-            Uri.parse("https://snowplow.celiums.com/api/requests/companyrequest"),
+            Uri.parse(
+                "https://snowplow.celiums.com/api/requests/companyrequest"),
             headers: {
               "Content-Type": "application/json",
               "Accept": "application/json",
-              "Authorization": "7161092a3ab46fb924d464e65c84e355", // If required
             },
-            body: jsonEncode({
-              "customer_id": userId,
-              "agency_id": _selectedAgency ?? "",
-              "service_type": _selectedService,
-              "service_area": _areaController.text,
-              "address": _currentAddress,
-              "preferred_time": formattedTime,
-              "preferred_date": formattedDate,
-              "image": base64Images.join(","),
-              "image_ext": "jpg",
-              "urgency_level": selectedUrgency,
-              "service_latitude": _latitude!.toString(),
-              "service_longitude": _longitude!.toString(),
-              "api_mode": "test",
-            }),
+            body: jsonEncode(requestBody),
           );
 
+          print("📥 Response Status Code: ${response.statusCode}");
+          print("📥 Response Body (Raw): ${response.body}");
+
           if (response.statusCode == 200 || response.statusCode == 201) {
-            print("Response Status Code: ${response.statusCode}");
-            print("Response Headers: ${response.headers}");
-
-            // Check for content type and response body
-            var contentType = response.headers['content-type'];
-            print("Content-Type: $contentType");
-
-            // Try to parse the response body as JSON
             try {
               var jsonResponse = jsonDecode(response.body);
-              print("Response Body (JSON): $jsonResponse");
+              print("📥 Response Body (JSON): $jsonResponse");
 
-              // Show success message with any available message from the response
-              String message = jsonResponse['message'] ?? "Request sent successfully!";
+              // Dismiss loading indicator
+              Navigator.pop(context);
+
+              String message =
+                  jsonResponse['message'] ?? "Request sent successfully!";
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text(message)),
+                SnackBar(
+                  content: Text(message),
+                  backgroundColor: Colors.teal[200],
+                ),
               );
+
+              // Clear form after successful submission
+              setState(() {
+                _areaController.clear();
+                _locationController.clear();
+                _selectedServiceType = null;
+                _selectedDate = null;
+                _selectedTime = null;
+                _selectedImages = [];
+                _selectedAgency = null;
+                selectedUrgency = null;
+              });
+
+              // Navigate back to previous screen
+              Navigator.pop(context);
             } catch (e) {
-              // If not JSON, print raw body
-              print("Response Body (Raw): ${response.body}");
+              // Dismiss loading indicator
+              Navigator.pop(context);
+              print("❌ Error parsing response: $e");
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text("Request sent successfully!")),
+                SnackBar(
+                  content: Text("Error processing server response"),
+                  backgroundColor: Colors.red,
+                ),
               );
             }
           } else {
-            print("API Error Status Code: ${response.statusCode}");
-            print("API Error Body: ${response.body}");
-
-            // Try to parse error response
-            try {
-              var errorResponse = jsonDecode(response.body);
-              String errorMessage = errorResponse['message'] ?? "Request failed with status ${response.statusCode}";
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text(errorMessage)),
-              );
-            } catch (e) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text("Request failed: ${response.statusCode} - ${response.body}")),
-              );
-            }
-            throw Exception("API returned ${response.statusCode}");
+            // Dismiss loading indicator
+            Navigator.pop(context);
+            print("❌ Error response: ${response.statusCode} - ${response.body}");
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text("Failed to submit request"),
+                backgroundColor: Colors.red,
+              ),
+            );
           }
         }
       } catch (e) {
-        print("Submission error: $e");
+        // Dismiss loading indicator
+        Navigator.pop(context);
+        print("❌ Error submitting form: $e");
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Something went wrong. Please try again.")),
+          SnackBar(
+            content: Text("Error submitting form"),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     }
   }
-
-
-
-
-
 
   Future<void> _geocodeAddress(String address) async {
     try {
@@ -652,7 +691,8 @@ class _BidRequestFormState extends State<BidRequestForm> {
                               _selectedAddress = value;
                               if (value != "other") {
                                 _locationController.text = value!;
-                                _geocodeAddress(value); // Geocode the selected address
+                                _geocodeAddress(
+                                    value); // Geocode the selected address
                               } else {
                                 _locationController.clear();
                               }
@@ -681,7 +721,8 @@ class _BidRequestFormState extends State<BidRequestForm> {
                         decoration: InputDecoration(
                           labelText: "Choose a service",
                           border: OutlineInputBorder(),
-                          contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                          contentPadding: EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 10),
                         ),
                         hint: Text("Choose a service"),
                         items: _services.map((service) {
@@ -693,11 +734,34 @@ class _BidRequestFormState extends State<BidRequestForm> {
                         onChanged: (value) {
                           setState(() {
                             _selectedService = value;
+                            _selectedServiceType =
+                                value; // Update service type when service is selected
                           });
                         },
-                        validator: (value) => value == null ? "Please select a service" : null,
+                        validator: (value) =>
+                            value == null ? "Please select a service" : null,
                       ),
 
+                      // SizedBox(height: 15),
+                      //     TextFormField(
+                      //         style: GoogleFonts.poppins(),
+                      //       controller: _locationController,
+                      //       decoration: InputDecoration(labelText: "or enter new address",border: OutlineInputBorder()),
+                      //       enabled: _selectedAddress ==null,
+                      //       onChanged: (value){
+                      //         if(value.isNotEmpty){
+                      //           setState(() {
+                      //             _selectedAddress=null;
+                      //           });
+                      //         }
+                      //       },
+                      //       validator: (value){
+                      //         if((value == null || value.isEmpty) && _selectedAddress == null){
+                      //           return "enter or select an address";
+                      //         }
+                      //         return null;
+                      //       }
+                      //     ),
                       SizedBox(height: 15),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -742,11 +806,12 @@ class _BidRequestFormState extends State<BidRequestForm> {
                         icon: Icon(Icons.add_a_photo),
                         onPressed: _pickImages,
                       ),
-                      SizedBox(height: 15,),
+                      SizedBox(
+                        height: 15,
+                      ),
                       Column(
                         children: [
                           Text("Urgency Level"),
-
                           CheckboxListTile(
                             title: Text('Fast'),
                             value: selectedUrgency == 'fast',
@@ -803,10 +868,13 @@ class _BidRequestFormState extends State<BidRequestForm> {
                                       border: OutlineInputBorder(),
                                     ),
                                     value: _selectedAgency,
-                                    items: _agencies.map<DropdownMenuItem<String>>((Agency agency){
+                                    items: _agencies
+                                        .map<DropdownMenuItem<String>>(
+                                            (Agency agency) {
                                       return DropdownMenuItem(
                                         value: agency.id,
-                                          child: Text("${agency.name} ⭐ ${agency.rating.toStringAsFixed(1)}"),
+                                        child: Text(
+                                            "${agency.name} ⭐ ${agency.rating.toStringAsFixed(1)}"),
                                       );
                                     }).toList(),
                                     onChanged: (String? value) {
@@ -814,16 +882,18 @@ class _BidRequestFormState extends State<BidRequestForm> {
                                         _selectedAgency = value;
                                       });
                                     },
-                                  validator: (value)=> value == null ? "Select an agency" : null,
-                                ),
+                                    validator: (value) => value == null
+                                        ? "Select an agency"
+                                        : null,
+                                  ),
                         if (_selectedAgency != null) ...[
                           SizedBox(height: 10),
                           Text(
-                          "Selected agency: ${_agencies.firstWhere((agency) => agency.id == _selectedAgency).name}",
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                          ),
+                            "Selected agency: ${_agencies.firstWhere((agency) => agency.id == _selectedAgency).name}",
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
                           )
                           // Text(
                           //     "Rating: ${agencies.firstWhere((agency) => agency["name"] == _selectedAgency)["rating"]} ⭐"
@@ -832,9 +902,9 @@ class _BidRequestFormState extends State<BidRequestForm> {
                       ],
                       SizedBox(height: 20),
                       ElevatedButton(
-                        onPressed:(){
+                        onPressed: () {
                           print("Submit clicked");
-                         _submitForm();
+                          _submitForm();
                         },
                         style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.teal[100],
